@@ -1,0 +1,156 @@
+{
+  "section": "short-answer",
+  "description": "Questions expecting a brief, specific answer",
+  "systemPrompt": "Answer the following question about The Mountain Goats. Respond with only the answer, no explanation or additional text.",
+  "questions": [
+    {
+      "id": "sa-001",
+      "type": "short-answer",
+      "question": "Who is the lead singer and primary songwriter of The Mountain Goats?",
+      "acceptedAnswers": [
+        "John Darnielle",
+        "Darnielle",
+        "John"
+      ],
+      "difficulty": "easy"
+    },
+    {
+      "id": "sa-002",
+      "type": "short-answer",
+      "question": "In what year was The Mountain Goats formed?",
+      "acceptedAnswers": [
+        "1991"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-002",
+      "type": "short-answer",
+      "question": "What was the first album, of any sort, released by the Mountain Goats?",
+      "acceptedAnswers": [
+        "Taboo VI: The Homecoming"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-004",
+      "type": "short-answer",
+      "question": "What was the first studio album released by the Mountain Goats?",
+      "acceptedAnswers": [
+        "Zopilote Machine"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-005",
+      "type": "short-answer",
+      "question": "Who is the long time bassist for the Mountain Goats, officially starting on the album Tallahassee?",
+      "acceptedAnswers": [
+        "Peter Hughes"
+      ],
+      "difficulty": "easy"
+    },
+    {
+      "id": "sa-006",
+      "type": "short-answer",
+      "question": "What is the title of the EP co-created by the Mountain Goats and John Vanderslice and released in 2009?",
+      "acceptedAnswers": [
+        "Moon Colony Bloodbath"
+      ],
+      "difficulty": "hard"
+    },
+    {
+      "id": "sa-007",
+      "type": "short-answer",
+      "question": "What is the name of the famous female protagonist who pops up in many Mountain Goats songs?",
+      "acceptedAnswers": [
+        "Jenny"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-008",
+      "type": "short-answer",
+      "question": "Who is the drummer for the Mountain Goats?",
+      "acceptedAnswers": [
+        "Jon Wurster"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-009",
+      "type": "short-answer",
+      "question": "What is the name of the city in which the Mountain Goats were formed?",
+      "acceptedAnswers": [
+        "Claremont",
+        "Claremont, California"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-010",
+      "type": "short-answer",
+      "question": "In the song \"The Best Ever Death Metal Band in Denton,\" the two main characters (Jeff and Cyrus) end the song by screaming what two words?",
+      "acceptedAnswers": [
+        "Hail Satan"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-011",
+      "type": "short-answer",
+      "question": "In 2014, the band’s frontman released his debut novel, which was nominated for the National Book Award. What is the title of the book?",
+      "acceptedAnswers": [
+        "Wolf in White Van"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-012",
+      "type": "short-answer",
+      "question": "In the song Up the Wolves, what city is prominently mentioned?",
+      "acceptedAnswers": [
+        "Rome"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-013",
+      "type": "short-answer",
+      "question": "In the song \"This Year\", in which city will there be feasting and dancing next year?",
+      "acceptedAnswers": [
+        "Jerusalem"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-014",
+      "type": "short-answer",
+      "question": "In one word, what is the main theme/topic of the Mountain Goats album The Sunset Tree?",
+      "acceptedAnswers": [
+        "abuse"
+      ],
+      "difficulty": "medium"
+    },
+    {
+      "id": "sa-015",
+      "type": "short-answer",
+      "question": "In the early \"lo-fi\" era, the band was famous for recording songs directly onto cassette tape using a specific boombox model that creates a distinctive mechanical whir. What is the make and model of this boombox?",
+      "acceptedAnswers": [
+        "Panasonic RX-FT500",
+        "Panasonic",
+        "RX-FT500"
+      ],
+      "difficulty": "hard"
+    },
+    {
+      "id": "sa-016",
+      "type": "short-answer",
+      "question": "What’s the title of the track that begins with “On the day that I forget you…” and is often cited as a devastating fan favorite?",
+      "acceptedAnswers": [
+        "Twin Human Highway Flares"
+      ],
+      "difficulty": "hard"
+    }
+  ]
+}
