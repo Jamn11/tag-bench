@@ -66,16 +66,20 @@ function FilterControls({
   costTiers,
   selectedProviders,
   selectedCostTiers,
+  searchQuery,
   onProviderChange,
   onCostTierChange,
+  onSearchChange,
   onClearFilters,
 }: {
   providers: string[];
   costTiers: CostTier[];
   selectedProviders: string[];
   selectedCostTiers: CostTier[];
+  searchQuery: string;
   onProviderChange: (providers: string[]) => void;
   onCostTierChange: (tiers: CostTier[]) => void;
+  onSearchChange: (query: string) => void;
   onClearFilters: () => void;
 }) {
   const handleProviderToggle = (provider: string) => {
@@ -94,10 +98,29 @@ function FilterControls({
     }
   };
 
-  const hasFilters = selectedProviders.length > 0 || selectedCostTiers.length > 0;
+  const hasFilters = selectedProviders.length > 0 || selectedCostTiers.length > 0 || searchQuery.length > 0;
 
   return (
     <div className="filter-controls">
+      <div className="search-group">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search models..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          aria-label="Search models"
+        />
+        {searchQuery && (
+          <button
+            className="search-clear"
+            onClick={() => onSearchChange("")}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
       <div className="filter-group">
         <span className="filter-label">Provider:</span>
         <div className="filter-chips">
@@ -128,7 +151,7 @@ function FilterControls({
       </div>
       {hasFilters && (
         <button className="clear-filters-btn" onClick={onClearFilters}>
-          Clear filters
+          Clear all
         </button>
       )}
     </div>
@@ -1852,6 +1875,678 @@ function MiniMetricsRow({
   );
 }
 
+// Radar Chart for Multi-dimensional Comparison
+function RadarChart({
+  results,
+  selectedModels,
+}: {
+  results: EnhancedBenchmarkResult[];
+  selectedModels: string[];
+}) {
+  const modelsToShow = useMemo(() => {
+    if (selectedModels.length > 0) {
+      return results.filter((r) => selectedModels.includes(r.modelId));
+    }
+    // Show top 5 by default
+    return [...results].sort((a, b) => b.overallScore - a.overallScore).slice(0, 5);
+  }, [results, selectedModels]);
+
+  const sections = useMemo(() => {
+    const names = new Set<string>();
+    results.forEach((r) => r.sections.forEach((s) => names.add(s.section)));
+    return Array.from(names);
+  }, [results]);
+
+  if (sections.length === 0 || modelsToShow.length === 0) {
+    return null;
+  }
+
+  const centerX = 150;
+  const centerY = 150;
+  const radius = 100;
+  const angleStep = (2 * Math.PI) / sections.length;
+
+  // Generate points for each section axis
+  const axisPoints = sections.map((_, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    return {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+      labelX: centerX + (radius + 20) * Math.cos(angle),
+      labelY: centerY + (radius + 20) * Math.sin(angle),
+    };
+  });
+
+  // Generate polygon points for each model
+  const modelPolygons = modelsToShow.map((model) => {
+    const points = sections.map((section, i) => {
+      const sectionData = model.sections.find((s) => s.section === section);
+      const score = sectionData?.averageScore ?? 0;
+      const angle = i * angleStep - Math.PI / 2;
+      return {
+        x: centerX + radius * score * Math.cos(angle),
+        y: centerY + radius * score * Math.sin(angle),
+      };
+    });
+    return {
+      modelId: model.modelId,
+      modelName: model.modelName,
+      provider: model.provider,
+      points: points.map((p) => `${p.x},${p.y}`).join(" "),
+    };
+  });
+
+  const colors = ["#22c55e", "#3b82f6", "#a855f7", "#eab308", "#ef4444"];
+
+  return (
+    <div className="chart-card radar-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Section Radar</h3>
+        <p className="chart-subtitle">Multi-dimensional performance comparison</p>
+      </div>
+      <div className="radar-container">
+        <svg viewBox="0 0 300 300" className="radar-svg">
+          {/* Grid circles */}
+          {[0.25, 0.5, 0.75, 1].map((scale) => (
+            <circle
+              key={scale}
+              cx={centerX}
+              cy={centerY}
+              r={radius * scale}
+              className="radar-grid-circle"
+            />
+          ))}
+
+          {/* Axis lines */}
+          {axisPoints.map((point, i) => (
+            <line
+              key={i}
+              x1={centerX}
+              y1={centerY}
+              x2={point.x}
+              y2={point.y}
+              className="radar-axis"
+            />
+          ))}
+
+          {/* Model polygons */}
+          {modelPolygons.map((model, idx) => (
+            <polygon
+              key={model.modelId}
+              points={model.points}
+              className="radar-polygon"
+              style={{
+                stroke: colors[idx % colors.length],
+                fill: colors[idx % colors.length],
+              }}
+            />
+          ))}
+
+          {/* Section labels */}
+          {sections.map((section, i) => (
+            <text
+              key={section}
+              x={axisPoints[i]?.labelX ?? 0}
+              y={axisPoints[i]?.labelY ?? 0}
+              className="radar-label"
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {section.substring(0, 4)}
+            </text>
+          ))}
+        </svg>
+      </div>
+      <div className="radar-legend">
+        {modelsToShow.map((model, idx) => (
+          <div key={model.modelId} className="radar-legend-item">
+            <span
+              className="radar-legend-color"
+              style={{ backgroundColor: colors[idx % colors.length] }}
+            />
+            <span className="radar-legend-name">{model.modelName}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Section Correlation Matrix
+function SectionCorrelationMatrix({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const { sections, correlationMatrix } = useMemo(() => {
+    const sectionNames = new Set<string>();
+    results.forEach((r) => r.sections.forEach((s) => sectionNames.add(s.section)));
+    const sections = Array.from(sectionNames);
+
+    // Build score vectors for each section
+    const sectionScores: Record<string, number[]> = {};
+    sections.forEach((s) => (sectionScores[s] = []));
+
+    results.forEach((r) => {
+      sections.forEach((section) => {
+        const sectionData = r.sections.find((s) => s.section === section);
+        sectionScores[section]?.push(sectionData?.averageScore ?? 0);
+      });
+    });
+
+    // Calculate correlation between each pair of sections
+    const calculateCorrelation = (a: number[], b: number[]): number => {
+      const n = a.length;
+      if (n === 0) return 0;
+      const meanA = a.reduce((s, v) => s + v, 0) / n;
+      const meanB = b.reduce((s, v) => s + v, 0) / n;
+      let num = 0;
+      let denomA = 0;
+      let denomB = 0;
+      for (let i = 0; i < n; i++) {
+        const diffA = (a[i] ?? 0) - meanA;
+        const diffB = (b[i] ?? 0) - meanB;
+        num += diffA * diffB;
+        denomA += diffA * diffA;
+        denomB += diffB * diffB;
+      }
+      const denom = Math.sqrt(denomA) * Math.sqrt(denomB);
+      return denom === 0 ? 0 : num / denom;
+    };
+
+    const matrix: number[][] = [];
+    for (let i = 0; i < sections.length; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < sections.length; j++) {
+        const sectionI = sections[i];
+        const sectionJ = sections[j];
+        if (sectionI && sectionJ) {
+          row.push(calculateCorrelation(sectionScores[sectionI] ?? [], sectionScores[sectionJ] ?? []));
+        } else {
+          row.push(0);
+        }
+      }
+      matrix.push(row);
+    }
+
+    return { sections, correlationMatrix: matrix };
+  }, [results]);
+
+  const getCorrelationColor = (value: number): string => {
+    if (value >= 0.7) return "corr-high-pos";
+    if (value >= 0.3) return "corr-med-pos";
+    if (value >= -0.3) return "corr-neutral";
+    if (value >= -0.7) return "corr-med-neg";
+    return "corr-high-neg";
+  };
+
+  return (
+    <div className="chart-card correlation-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Section Correlation</h3>
+        <p className="chart-subtitle">How section scores relate to each other</p>
+      </div>
+      <div className="correlation-container">
+        <div className="correlation-matrix">
+          <div className="corr-header-row">
+            <div className="corr-corner" />
+            {sections.map((s) => (
+              <div key={s} className="corr-header-cell" title={s}>
+                {s.substring(0, 3)}
+              </div>
+            ))}
+          </div>
+          {correlationMatrix.map((row, i) => (
+            <div key={sections[i]} className="corr-row">
+              <div className="corr-row-label" title={sections[i]}>
+                {sections[i]?.substring(0, 3)}
+              </div>
+              {row.map((value, j) => (
+                <div
+                  key={j}
+                  className={`corr-cell ${getCorrelationColor(value)}`}
+                  title={`${sections[i]} ↔ ${sections[j]}: ${value.toFixed(2)}`}
+                >
+                  {i === j ? "1" : value.toFixed(1)}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="correlation-legend">
+        <span className="corr-legend-item corr-high-neg">-1</span>
+        <span className="corr-legend-label">Negative</span>
+        <span className="corr-legend-item corr-neutral">0</span>
+        <span className="corr-legend-label">Positive</span>
+        <span className="corr-legend-item corr-high-pos">+1</span>
+      </div>
+    </div>
+  );
+}
+
+// Advanced Statistics Panel
+function AdvancedStatsPanel({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const stats = useMemo(() => {
+    if (results.length === 0) return null;
+
+    const scores = results.map((r) => r.overallScore).sort((a, b) => a - b);
+    const n = scores.length;
+
+    // Percentiles
+    const p25 = scores[Math.floor(n * 0.25)] ?? 0;
+    const p50 = scores[Math.floor(n * 0.5)] ?? 0;
+    const p75 = scores[Math.floor(n * 0.75)] ?? 0;
+    const p90 = scores[Math.floor(n * 0.9)] ?? 0;
+
+    // IQR
+    const iqr = p75 - p25;
+
+    // Mean and Variance
+    const mean = scores.reduce((a, b) => a + b, 0) / n;
+    const variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / n;
+    const stdDev = Math.sqrt(variance);
+
+    // Skewness (measure of asymmetry)
+    const skewness =
+      scores.reduce((sum, s) => sum + Math.pow((s - mean) / stdDev, 3), 0) / n;
+
+    // Find outliers (beyond 1.5 * IQR)
+    const lowerBound = p25 - 1.5 * iqr;
+    const upperBound = p75 + 1.5 * iqr;
+    const outliers = results.filter(
+      (r) => r.overallScore < lowerBound || r.overallScore > upperBound
+    );
+
+    return {
+      p25,
+      p50,
+      p75,
+      p90,
+      iqr,
+      mean,
+      variance,
+      stdDev,
+      skewness,
+      outliers,
+      min: scores[0] ?? 0,
+      max: scores[n - 1] ?? 0,
+    };
+  }, [results]);
+
+  if (!stats) return null;
+
+  return (
+    <div className="chart-card stats-panel">
+      <div className="chart-header">
+        <h3 className="chart-title">Statistical Analysis</h3>
+        <p className="chart-subtitle">Distribution metrics and outliers</p>
+      </div>
+      <div className="stats-grid">
+        <div className="stats-section">
+          <h4 className="stats-section-title">Percentiles</h4>
+          <div className="stats-row">
+            <span className="stats-label">25th (Q1)</span>
+            <span className={`stats-value ${getScoreClass(stats.p25)}`}>
+              {formatScore(stats.p25)}
+            </span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">50th (Median)</span>
+            <span className={`stats-value ${getScoreClass(stats.p50)}`}>
+              {formatScore(stats.p50)}
+            </span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">75th (Q3)</span>
+            <span className={`stats-value ${getScoreClass(stats.p75)}`}>
+              {formatScore(stats.p75)}
+            </span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">90th</span>
+            <span className={`stats-value ${getScoreClass(stats.p90)}`}>
+              {formatScore(stats.p90)}
+            </span>
+          </div>
+        </div>
+        <div className="stats-section">
+          <h4 className="stats-section-title">Spread</h4>
+          <div className="stats-row">
+            <span className="stats-label">Range</span>
+            <span className="stats-value">
+              {formatScore(stats.min)} – {formatScore(stats.max)}
+            </span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">IQR</span>
+            <span className="stats-value">{formatScore(stats.iqr)}</span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">Std Dev</span>
+            <span className="stats-value">±{formatScore(stats.stdDev)}</span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">Variance</span>
+            <span className="stats-value">{stats.variance.toFixed(4)}</span>
+          </div>
+        </div>
+        <div className="stats-section">
+          <h4 className="stats-section-title">Shape</h4>
+          <div className="stats-row">
+            <span className="stats-label">Skewness</span>
+            <span className="stats-value">
+              {stats.skewness > 0 ? "+" : ""}
+              {stats.skewness.toFixed(2)}
+              <span className="stats-hint">
+                {stats.skewness > 0.5
+                  ? " (right-skewed)"
+                  : stats.skewness < -0.5
+                    ? " (left-skewed)"
+                    : " (symmetric)"}
+              </span>
+            </span>
+          </div>
+          <div className="stats-row">
+            <span className="stats-label">Outliers</span>
+            <span className="stats-value">
+              {stats.outliers.length}
+              {stats.outliers.length > 0 && (
+                <span className="stats-hint">
+                  {" "}
+                  ({stats.outliers.map((o) => o.modelName.split(" ")[0]).join(", ")})
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="box-plot-container">
+        <div className="box-plot">
+          <div
+            className="box-whisker-left"
+            style={{ left: `${stats.min * 100}%`, width: `${(stats.p25 - stats.min) * 100}%` }}
+          />
+          <div
+            className="box-main"
+            style={{ left: `${stats.p25 * 100}%`, width: `${stats.iqr * 100}%` }}
+          >
+            <div
+              className="box-median"
+              style={{ left: `${((stats.p50 - stats.p25) / stats.iqr) * 100}%` }}
+            />
+          </div>
+          <div
+            className="box-whisker-right"
+            style={{ left: `${stats.p75 * 100}%`, width: `${(stats.max - stats.p75) * 100}%` }}
+          />
+          {stats.outliers.map((o) => (
+            <div
+              key={o.modelId}
+              className="box-outlier"
+              style={{ left: `${o.overallScore * 100}%` }}
+              title={`${o.modelName}: ${formatScore(o.overallScore)}`}
+            />
+          ))}
+        </div>
+        <div className="box-plot-labels">
+          <span style={{ left: "0%" }}>0%</span>
+          <span style={{ left: "50%" }}>50%</span>
+          <span style={{ left: "100%" }}>100%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Model Consistency Chart
+function ConsistencyChart({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const consistencyData = useMemo(() => {
+    return results
+      .map((r) => {
+        const scores = r.sections.map((s) => s.averageScore);
+        const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const variance =
+          scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length;
+        const stdDev = Math.sqrt(variance);
+        const min = Math.min(...scores);
+        const max = Math.max(...scores);
+        return {
+          modelId: r.modelId,
+          modelName: r.modelName,
+          provider: r.provider,
+          overallScore: r.overallScore,
+          consistency: 1 - stdDev, // Higher = more consistent
+          stdDev,
+          range: max - min,
+          min,
+          max,
+        };
+      })
+      .sort((a, b) => b.consistency - a.consistency);
+  }, [results]);
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Performance Consistency</h3>
+        <p className="chart-subtitle">Score variance across sections (lower = more consistent)</p>
+      </div>
+      <div className="consistency-chart">
+        {consistencyData.slice(0, 10).map((data, idx) => (
+          <div key={data.modelId} className="consistency-row">
+            <div className="consistency-info">
+              <span className="consistency-rank">#{idx + 1}</span>
+              <span className="consistency-name" title={data.modelName}>
+                {data.modelName}
+              </span>
+              <span
+                className={`provider-badge tiny ${getProviderClass(data.provider)}`}
+              >
+                {data.provider}
+              </span>
+            </div>
+            <div className="consistency-visual">
+              <div className="consistency-range-bg">
+                <div
+                  className="consistency-range"
+                  style={{
+                    left: `${data.min * 100}%`,
+                    width: `${data.range * 100}%`,
+                  }}
+                />
+                <div
+                  className={`consistency-mean ${getScoreClass(data.overallScore)}`}
+                  style={{ left: `${data.overallScore * 100}%` }}
+                />
+              </div>
+              <span className="consistency-value">±{formatScore(data.stdDev)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Model Comparison Selector
+function ModelComparisonSelector({
+  results,
+  selectedModels,
+  onToggleModel,
+  maxSelections = 4,
+}: {
+  results: EnhancedBenchmarkResult[];
+  selectedModels: string[];
+  onToggleModel: (modelId: string) => void;
+  maxSelections?: number;
+}) {
+  return (
+    <div className="comparison-selector">
+      <div className="comparison-selector-header">
+        <h4>Select models to compare ({selectedModels.length}/{maxSelections})</h4>
+        {selectedModels.length > 0 && (
+          <button
+            className="clear-selection-btn"
+            onClick={() => selectedModels.forEach(onToggleModel)}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="comparison-selector-grid">
+        {results.map((r) => {
+          const isSelected = selectedModels.includes(r.modelId);
+          const isDisabled = !isSelected && selectedModels.length >= maxSelections;
+          return (
+            <button
+              key={r.modelId}
+              className={`comparison-model-btn ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}`}
+              onClick={() => !isDisabled && onToggleModel(r.modelId)}
+              disabled={isDisabled}
+            >
+              <span className="cmb-name">{r.modelName}</span>
+              <span className={`cmb-score ${getScoreClass(r.overallScore)}`}>
+                {formatScore(r.overallScore)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Side-by-Side Model Comparison
+function ModelComparisonView({
+  results,
+  selectedModels,
+}: {
+  results: EnhancedBenchmarkResult[];
+  selectedModels: string[];
+}) {
+  const modelsToCompare = useMemo(() => {
+    return selectedModels
+      .map((id) => results.find((r) => r.modelId === id))
+      .filter((r): r is EnhancedBenchmarkResult => r !== undefined);
+  }, [results, selectedModels]);
+
+  if (modelsToCompare.length === 0) {
+    return (
+      <div className="comparison-empty">
+        <p>Select 2-4 models above to compare them side by side</p>
+      </div>
+    );
+  }
+
+  const sections = modelsToCompare[0]?.sections.map((s) => s.section) ?? [];
+
+  return (
+    <div className="model-comparison">
+      <table className="comparison-table">
+        <thead>
+          <tr>
+            <th className="comparison-metric-header">Metric</th>
+            {modelsToCompare.map((m) => (
+              <th key={m.modelId} className="comparison-model-header">
+                <div className="cmh-name">{m.modelName}</div>
+                <span
+                  className={`provider-badge small ${getProviderClass(m.provider)}`}
+                >
+                  {m.provider}
+                </span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="comparison-row highlight">
+            <td className="comparison-metric">Overall Score</td>
+            {modelsToCompare.map((m) => {
+              const best = Math.max(...modelsToCompare.map((x) => x.overallScore));
+              const isBest = m.overallScore === best;
+              return (
+                <td
+                  key={m.modelId}
+                  className={`comparison-value ${getScoreClass(m.overallScore)} ${isBest ? "is-best" : ""}`}
+                >
+                  {formatScore(m.overallScore)}
+                  {isBest && <span className="best-badge">Best</span>}
+                </td>
+              );
+            })}
+          </tr>
+          <tr className="comparison-row">
+            <td className="comparison-metric">Total Latency</td>
+            {modelsToCompare.map((m) => {
+              const best = Math.min(...modelsToCompare.map((x) => x.totalLatencyMs));
+              const isBest = m.totalLatencyMs === best;
+              return (
+                <td
+                  key={m.modelId}
+                  className={`comparison-value ${isBest ? "is-best" : ""}`}
+                >
+                  {formatLatency(m.totalLatencyMs)}
+                  {isBest && <span className="best-badge">Fastest</span>}
+                </td>
+              );
+            })}
+          </tr>
+          <tr className="comparison-row">
+            <td className="comparison-metric">Cost Tier</td>
+            {modelsToCompare.map((m) => (
+              <td key={m.modelId} className="comparison-value">
+                {m.costTier ? (
+                  <span className={`cost-badge cost-${m.costTier}`}>
+                    {getCostTierLabel(m.costTier)}
+                  </span>
+                ) : (
+                  <span className="text-tertiary">N/A</span>
+                )}
+              </td>
+            ))}
+          </tr>
+          <tr className="comparison-divider">
+            <td colSpan={modelsToCompare.length + 1}>Section Scores</td>
+          </tr>
+          {sections.map((section) => {
+            const sectionScores = modelsToCompare.map((m) => {
+              const s = m.sections.find((x) => x.section === section);
+              return s?.averageScore ?? 0;
+            });
+            const bestScore = Math.max(...sectionScores);
+            return (
+              <tr key={section} className="comparison-row">
+                <td className="comparison-metric section-name">{section}</td>
+                {modelsToCompare.map((m, idx) => {
+                  const score = sectionScores[idx] ?? 0;
+                  const isBest = score === bestScore && bestScore > 0;
+                  return (
+                    <td
+                      key={m.modelId}
+                      className={`comparison-value ${getScoreClass(score)} ${isBest ? "is-best" : ""}`}
+                    >
+                      {formatScore(score)}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function AnalysisView({ results }: { results: EnhancedBenchmarkResult[] }) {
   const topResults = useMemo(() => {
     return [...results].sort((a, b) => b.overallScore - a.overallScore).slice(0, 5);
@@ -2041,10 +2736,14 @@ function App() {
   // Filter state
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [selectedCostTiers, setSelectedCostTiers] = useState<CostTier[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Sort state
   const [sortBy, setSortBy] = useState<SortOption>("score");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Model comparison state
+  const [comparisonModels, setComparisonModels] = useState<string[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -2086,12 +2785,23 @@ function App() {
     if (!data) return [];
 
     return data.results.filter((r) => {
+      // Search filter
+      if (searchQuery.length > 0) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = r.modelName.toLowerCase().includes(query);
+        const matchesProvider = r.provider.toLowerCase().includes(query);
+        if (!matchesName && !matchesProvider) {
+          return false;
+        }
+      }
+      // Provider filter
       if (
         selectedProviders.length > 0 &&
         !selectedProviders.includes(r.provider)
       ) {
         return false;
       }
+      // Cost tier filter
       if (
         selectedCostTiers.length > 0 &&
         (!r.costTier || !selectedCostTiers.includes(r.costTier))
@@ -2100,7 +2810,7 @@ function App() {
       }
       return true;
     });
-  }, [data, selectedProviders, selectedCostTiers]);
+  }, [data, selectedProviders, selectedCostTiers, searchQuery]);
 
   const selectedResult = useMemo(
     () => filteredResults.find((r) => r.modelId === selectedModel),
@@ -2127,6 +2837,15 @@ function App() {
   const handleClearFilters = useCallback(() => {
     setSelectedProviders([]);
     setSelectedCostTiers([]);
+    setSearchQuery("");
+  }, []);
+
+  const handleToggleComparisonModel = useCallback((modelId: string) => {
+    setComparisonModels((prev) =>
+      prev.includes(modelId)
+        ? prev.filter((id) => id !== modelId)
+        : [...prev, modelId]
+    );
   }, []);
 
   if (loading) {
@@ -2209,8 +2928,10 @@ function App() {
               costTiers={costTiers}
               selectedProviders={selectedProviders}
               selectedCostTiers={selectedCostTiers}
+              searchQuery={searchQuery}
               onProviderChange={setSelectedProviders}
               onCostTierChange={setSelectedCostTiers}
+              onSearchChange={setSearchQuery}
               onClearFilters={handleClearFilters}
             />
             {view === "leaderboard" && (
@@ -2240,7 +2961,24 @@ function App() {
           <>
             <MiniMetricsRow results={filteredResults} />
             <QuickStatsRow results={filteredResults} />
+
+            {/* Model Comparison Section */}
+            <ModelComparisonSelector
+              results={filteredResults}
+              selectedModels={comparisonModels}
+              onToggleModel={handleToggleComparisonModel}
+              maxSelections={4}
+            />
+            <ModelComparisonView
+              results={filteredResults}
+              selectedModels={comparisonModels}
+            />
+
             <div className="charts-container dense">
+              <RadarChart results={filteredResults} selectedModels={comparisonModels} />
+              <SectionCorrelationMatrix results={filteredResults} />
+              <AdvancedStatsPanel results={filteredResults} />
+              <ConsistencyChart results={filteredResults} />
               <SectionHeatmap results={filteredResults} />
               <PerformanceQuadrant results={filteredResults} />
               <ProviderHeadToHead results={filteredResults} />
