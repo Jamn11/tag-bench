@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type {
@@ -15,12 +15,36 @@ import {
   getProviderClass,
 } from "./types";
 
+// Helper to truncate text
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+}
+
 // Components
 function Loading() {
   return (
-    <div className="loading">
-      <div className="loading-spinner" />
+    <div className="loading" role="status" aria-label="Loading">
+      <div className="loading-spinner" aria-hidden="true" />
       <div className="loading-text">Loading benchmark results...</div>
+    </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="loading" role="alert">
+      <div className="empty-icon" aria-hidden="true">!</div>
+      <div className="empty-text">Error loading data: {message}</div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="loading" role="status">
+      <div className="empty-icon" aria-hidden="true">?</div>
+      <div className="empty-text">No benchmark data available</div>
     </div>
   );
 }
@@ -28,16 +52,25 @@ function Loading() {
 function StatsOverview({ data }: { data: ApiData }) {
   const stats = useMemo(() => {
     const { results } = data;
+    if (results.length === 0) {
+      return {
+        modelCount: 0,
+        avgScore: 0,
+        bestModel: "N/A",
+        bestScore: 0,
+        totalQuestions: 0,
+        avgLatency: 0,
+      };
+    }
+
     const avgScore =
       results.reduce((sum, r) => sum + r.overallScore, 0) / results.length;
     const bestResult = results.reduce<EnhancedBenchmarkResult | null>(
       (best, r) => (!best || r.overallScore > best.overallScore ? r : best),
       null
     );
-    const totalQuestions = results[0]?.sections.reduce(
-      (sum, s) => sum + s.totalQuestions,
-      0
-    ) ?? 0;
+    const totalQuestions =
+      results[0]?.sections.reduce((sum, s) => sum + s.totalQuestions, 0) ?? 0;
     const totalLatency = results.reduce((sum, r) => sum + r.totalLatencyMs, 0);
 
     return {
@@ -51,7 +84,7 @@ function StatsOverview({ data }: { data: ApiData }) {
   }, [data]);
 
   return (
-    <div className="stats-grid">
+    <section className="stats-grid" aria-label="Benchmark Statistics">
       <div className="stat-card">
         <div className="stat-label">Models Tested</div>
         <div className="stat-value">{stats.modelCount}</div>
@@ -72,7 +105,7 @@ function StatsOverview({ data }: { data: ApiData }) {
         <div className="stat-value">{formatScore(stats.avgScore)}</div>
         <div className="stat-detail">Across all models</div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -83,24 +116,46 @@ function Leaderboard({
 }: {
   results: EnhancedBenchmarkResult[];
   selectedModel: string | null;
-  onSelectModel: (modelId: string) => void;
+  onSelectModel: (modelId: string | null) => void;
 }) {
   const sortedResults = useMemo(
     () => [...results].sort((a, b) => b.overallScore - a.overallScore),
     [results]
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, modelId: string) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelectModel(selectedModel === modelId ? null : modelId);
+      } else if (e.key === "Escape") {
+        onSelectModel(null);
+      }
+    },
+    [onSelectModel, selectedModel]
+  );
+
+  const handleClick = useCallback(
+    (modelId: string) => {
+      onSelectModel(selectedModel === modelId ? null : modelId);
+    },
+    [onSelectModel, selectedModel]
+  );
+
   return (
-    <div className="leaderboard animate-fade-in">
+    <section
+      className="leaderboard animate-fade-in"
+      aria-label="Model Leaderboard"
+    >
       <div className="leaderboard-header">
         <div>
-          <div className="leaderboard-title">Model Leaderboard</div>
+          <h2 className="leaderboard-title">Model Leaderboard</h2>
           <div className="leaderboard-subtitle">
-            Ranked by overall accuracy
+            Ranked by overall accuracy - Click to view details
           </div>
         </div>
       </div>
-      <div className="leaderboard-list">
+      <div className="leaderboard-list" role="list">
         {sortedResults.map((result, index) => {
           const scoreClass = getScoreClass(result.overallScore);
           const isSelected = selectedModel === result.modelId;
@@ -108,8 +163,13 @@ function Leaderboard({
           return (
             <div
               key={result.modelId}
+              role="listitem"
+              tabIndex={0}
               className={`leaderboard-item ${isSelected ? "selected" : ""}`}
-              onClick={() => onSelectModel(result.modelId)}
+              onClick={() => handleClick(result.modelId)}
+              onKeyDown={(e) => handleKeyDown(e, result.modelId)}
+              aria-selected={isSelected}
+              aria-label={`${result.modelName}, rank ${index + 1}, score ${formatScore(result.overallScore)}`}
             >
               <div className={`rank ${index < 3 ? "top-3" : ""}`}>
                 #{index + 1}
@@ -124,7 +184,13 @@ function Leaderboard({
                   </span>
                 </div>
               </div>
-              <div className="score-bar-container">
+              <div
+                className="score-bar-container"
+                role="progressbar"
+                aria-valuenow={Math.round(result.overallScore * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div
                   className={`score-bar ${scoreClass}`}
                   style={{ width: `${result.overallScore * 100}%` }}
@@ -137,24 +203,31 @@ function Leaderboard({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
 function SectionBreakdown({ sections }: { sections: SectionResult[] }) {
   return (
-    <div className="section-grid animate-slide-up">
+    <div className="section-grid animate-slide-up" role="list">
       {sections.map((section) => {
         const scoreClass = getScoreClass(section.averageScore);
         return (
-          <div key={section.section} className="section-card">
+          <div key={section.section} className="section-card" role="listitem">
             <div className="section-header">
-              <div className="section-name">{section.section}</div>
+              <h3 className="section-name">{section.section}</h3>
               <div className={`section-score ${scoreClass}`}>
                 {formatScore(section.averageScore)}
               </div>
             </div>
-            <div className="score-bar-container">
+            <div
+              className="score-bar-container"
+              role="progressbar"
+              aria-valuenow={Math.round(section.averageScore * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${section.section} score`}
+            >
               <div
                 className={`score-bar ${scoreClass}`}
                 style={{ width: `${section.averageScore * 100}%` }}
@@ -181,15 +254,9 @@ function SectionBreakdown({ sections }: { sections: SectionResult[] }) {
   );
 }
 
-function QuestionsList({
-  results,
-  section,
-}: {
-  results: QuestionResult[];
-  section: string;
-}) {
+function QuestionsList({ results }: { results: QuestionResult[] }) {
   return (
-    <div className="questions-list">
+    <div className="questions-list" role="list">
       {results.map((result) => {
         const statusClass = result.correct
           ? "correct"
@@ -197,18 +264,30 @@ function QuestionsList({
             ? "partial"
             : "incorrect";
         const scoreClass = getScoreClass(result.score);
+        const statusLabel = result.correct
+          ? "Correct"
+          : result.score > 0
+            ? "Partially correct"
+            : "Incorrect";
 
         return (
-          <div key={result.questionId} className="question-item">
-            <div className={`question-status ${statusClass}`} />
+          <article
+            key={result.questionId}
+            className="question-item"
+            role="listitem"
+          >
+            <div
+              className={`question-status ${statusClass}`}
+              aria-label={statusLabel}
+              title={statusLabel}
+            />
             <div className="question-content">
               <div className="question-id">{result.questionId}</div>
               <div className="question-answers">
                 <div className="question-answer">
                   <span className="answer-label">Expected:</span>
                   <span className="answer-value correct">
-                    {result.expectedAnswer.substring(0, 200)}
-                    {result.expectedAnswer.length > 200 ? "..." : ""}
+                    {truncateText(result.expectedAnswer, 200)}
                   </span>
                 </div>
                 <div className="question-answer">
@@ -216,53 +295,68 @@ function QuestionsList({
                   <span
                     className={`answer-value ${result.correct ? "correct" : "incorrect"}`}
                   >
-                    {result.modelResponse.substring(0, 200)}
-                    {result.modelResponse.length > 200 ? "..." : ""}
+                    {truncateText(result.modelResponse, 200)}
                   </span>
                 </div>
               </div>
               <div className="question-latency">
                 {formatLatency(result.latencyMs)}
-                {result.timedOut ? " (timed out)" : ""}
+                {result.timedOut && (
+                  <span className="timeout-badge"> (timed out)</span>
+                )}
               </div>
             </div>
             <div className={`question-score ${scoreClass}`}>
               {formatScore(result.score)}
             </div>
-          </div>
+          </article>
         );
       })}
     </div>
   );
 }
 
-function ModelDetail({
-  result,
-}: {
-  result: EnhancedBenchmarkResult;
-}) {
+function ModelDetail({ result }: { result: EnhancedBenchmarkResult }) {
   const [activeSection, setActiveSection] = useState(
     result.sections[0]?.section || ""
   );
+
+  // Reset active section when result changes
+  useEffect(() => {
+    setActiveSection(result.sections[0]?.section || "");
+  }, [result.modelId, result.sections]);
 
   const currentSection = result.sections.find(
     (s) => s.section === activeSection
   );
 
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent, sectionName: string) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setActiveSection(sectionName);
+      }
+    },
+    []
+  );
+
   return (
-    <div className="detail-panel animate-slide-up">
+    <section className="detail-panel animate-slide-up" aria-label="Model Details">
       <div className="detail-header">
         <div className="detail-title">
-          <div className="detail-name">{result.modelName}</div>
+          <h2 className="detail-name">{result.modelName}</h2>
           <div className="detail-meta">
             <span
               className={`provider-badge ${getProviderClass(result.provider)}`}
             >
               {result.provider}
             </span>
-            {" | "}
-            {new Date(result.timestamp).toLocaleDateString()} | Total:{" "}
-            {formatLatency(result.totalLatencyMs)}
+            <span className="detail-separator"> | </span>
+            <time dateTime={result.timestamp}>
+              {new Date(result.timestamp).toLocaleDateString()}
+            </time>
+            <span className="detail-separator"> | </span>
+            <span>Total: {formatLatency(result.totalLatencyMs)}</span>
           </div>
         </div>
         <div className="detail-score">
@@ -277,68 +371,86 @@ function ModelDetail({
 
       <SectionBreakdown sections={result.sections} />
 
-      <div className="detail-tabs">
+      <div className="detail-tabs" role="tablist" aria-label="Result sections">
         {result.sections.map((section) => (
           <button
             key={section.section}
+            role="tab"
+            aria-selected={activeSection === section.section}
+            aria-controls={`tabpanel-${section.section}`}
             className={`detail-tab ${activeSection === section.section ? "active" : ""}`}
             onClick={() => setActiveSection(section.section)}
+            onKeyDown={(e) => handleTabKeyDown(e, section.section)}
           >
             {section.section} ({section.correctCount}/{section.totalQuestions})
           </button>
         ))}
       </div>
 
-      <div className="detail-content">
-        {currentSection && (
-          <QuestionsList
-            results={currentSection.results}
-            section={currentSection.section}
-          />
+      <div
+        className="detail-content"
+        role="tabpanel"
+        id={`tabpanel-${activeSection}`}
+        aria-label={`${activeSection} questions`}
+      >
+        {currentSection ? (
+          <QuestionsList results={currentSection.results} />
+        ) : (
+          <div className="empty-state">No questions in this section</div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
 function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
   const [selectedSection, setSelectedSection] = useState("overall");
 
-  const sortedResults = useMemo(() => {
-    if (selectedSection === "overall") {
-      return [...results].sort((a, b) => b.overallScore - a.overallScore);
-    }
-
-    return [...results].sort((a, b) => {
-      const aSection = a.sections.find((s) => s.section === selectedSection);
-      const bSection = b.sections.find((s) => s.section === selectedSection);
-      return (bSection?.averageScore || 0) - (aSection?.averageScore || 0);
-    });
-  }, [results, selectedSection]);
-
   const sections = useMemo(() => {
     const allSections = new Set<string>();
-    results.forEach((r) => r.sections.forEach((s) => allSections.add(s.section)));
+    results.forEach((r) =>
+      r.sections.forEach((s) => allSections.add(s.section))
+    );
     return ["overall", ...Array.from(allSections)];
   }, [results]);
 
-  const getScore = (result: EnhancedBenchmarkResult) => {
-    if (selectedSection === "overall") {
-      return result.overallScore;
-    }
-    const section = result.sections.find((s) => s.section === selectedSection);
-    return section?.averageScore || 0;
-  };
+  const getScore = useCallback(
+    (result: EnhancedBenchmarkResult) => {
+      if (selectedSection === "overall") {
+        return result.overallScore;
+      }
+      const section = result.sections.find(
+        (s) => s.section === selectedSection
+      );
+      return section?.averageScore ?? 0;
+    },
+    [selectedSection]
+  );
+
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => getScore(b) - getScore(a));
+  }, [results, getScore]);
+
+  const handleSectionChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setSelectedSection(e.target.value);
+    },
+    []
+  );
 
   return (
     <div className="chart-card">
       <div className="comparison-header">
-        <div className="comparison-title">Score by Section</div>
+        <h3 className="comparison-title">Score by Section</h3>
         <div className="comparison-controls">
           <div className="select-wrapper">
+            <label htmlFor="section-select" className="sr-only">
+              Select section
+            </label>
             <select
+              id="section-select"
               value={selectedSection}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedSection(e.target.value)}
+              onChange={handleSectionChange}
             >
               {sections.map((section) => (
                 <option key={section} value={section}>
@@ -349,27 +461,25 @@ function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
           </div>
         </div>
       </div>
-      <div className="bar-chart">
+      <div className="bar-chart" role="list" aria-label="Score comparison">
         {sortedResults.map((result) => {
           const score = getScore(result);
           const scoreClass = getScoreClass(score);
           return (
-            <div key={result.modelId} className="bar-row">
+            <div key={result.modelId} className="bar-row" role="listitem">
               <div className="bar-label" title={result.modelName}>
                 {result.modelName}
               </div>
-              <div className="bar-track">
+              <div
+                className="bar-track"
+                role="progressbar"
+                aria-valuenow={Math.round(score * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div
                   className={`bar-fill ${scoreClass}`}
-                  style={{
-                    width: `${score * 100}%`,
-                    background:
-                      scoreClass === "excellent"
-                        ? "linear-gradient(90deg, #22c55e, #16a34a)"
-                        : scoreClass === "good"
-                          ? "linear-gradient(90deg, #eab308, #ca8a04)"
-                          : "linear-gradient(90deg, #ef4444, #dc2626)",
-                  }}
+                  style={{ width: `${score * 100}%` }}
                 />
               </div>
               <div className={`bar-value ${scoreClass}`}>
@@ -418,12 +528,12 @@ function ProviderComparison({
 
   return (
     <div className="chart-card">
-      <div className="chart-title">Performance by Provider</div>
-      <div className="bar-chart">
+      <h3 className="chart-title">Performance by Provider</h3>
+      <div className="bar-chart" role="list" aria-label="Provider comparison">
         {providerStats.map((stat) => {
           const scoreClass = getScoreClass(stat.bestScore);
           return (
-            <div key={stat.provider} className="bar-row">
+            <div key={stat.provider} className="bar-row" role="listitem">
               <div className="bar-label">
                 <span
                   className={`provider-badge ${getProviderClass(stat.provider)}`}
@@ -431,18 +541,16 @@ function ProviderComparison({
                   {stat.provider}
                 </span>
               </div>
-              <div className="bar-track">
+              <div
+                className="bar-track"
+                role="progressbar"
+                aria-valuenow={Math.round(stat.bestScore * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <div
                   className={`bar-fill ${scoreClass}`}
-                  style={{
-                    width: `${stat.bestScore * 100}%`,
-                    background:
-                      scoreClass === "excellent"
-                        ? "linear-gradient(90deg, #22c55e, #16a34a)"
-                        : scoreClass === "good"
-                          ? "linear-gradient(90deg, #eab308, #ca8a04)"
-                          : "linear-gradient(90deg, #ef4444, #dc2626)",
-                  }}
+                  style={{ width: `${stat.bestScore * 100}%` }}
                 />
               </div>
               <div className={`bar-value ${scoreClass}`}>
@@ -456,6 +564,49 @@ function ProviderComparison({
   );
 }
 
+function AnalysisView({ results }: { results: EnhancedBenchmarkResult[] }) {
+  const topResults = useMemo(() => {
+    return [...results].sort((a, b) => b.overallScore - a.overallScore).slice(0, 5);
+  }, [results]);
+
+  return (
+    <div className="charts-container">
+      {topResults.map((result) => (
+        <div key={result.modelId} className="chart-card">
+          <h3 className="chart-title">
+            {result.modelName} - Section Performance
+          </h3>
+          <div className="bar-chart" role="list">
+            {result.sections.map((section) => {
+              const scoreClass = getScoreClass(section.averageScore);
+              return (
+                <div key={section.section} className="bar-row" role="listitem">
+                  <div className="bar-label">{section.section}</div>
+                  <div
+                    className="bar-track"
+                    role="progressbar"
+                    aria-valuenow={Math.round(section.averageScore * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className={`bar-fill ${scoreClass}`}
+                      style={{ width: `${section.averageScore * 100}%` }}
+                    />
+                  </div>
+                  <div className={`bar-value ${scoreClass}`}>
+                    {formatScore(section.averageScore)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -464,22 +615,38 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/data")
-      .then((res) => res.json() as Promise<ApiData>)
+    const controller = new AbortController();
+
+    fetch("/api/data", { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error: ${res.status}`);
+        }
+        return res.json() as Promise<ApiData>;
+      })
       .then((data) => {
         setData(data);
         setLoading(false);
       })
       .catch((err: Error) => {
-        setError(err.message);
-        setLoading(false);
+        if (err.name !== "AbortError") {
+          setError(err.message);
+          setLoading(false);
+        }
       });
+
+    return () => controller.abort();
   }, []);
 
   const selectedResult = useMemo(
     () => data?.results.find((r) => r.modelId === selectedModel),
     [data, selectedModel]
   );
+
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    setView(newView);
+    setSelectedModel(null);
+  }, []);
 
   if (loading) {
     return (
@@ -492,21 +659,15 @@ function App() {
   if (error) {
     return (
       <div className="app">
-        <div className="loading">
-          <div className="empty-icon">!</div>
-          <div className="empty-text">Error loading data: {error}</div>
-        </div>
+        <ErrorState message={error} />
       </div>
     );
   }
 
-  if (!data) {
+  if (!data || data.results.length === 0) {
     return (
       <div className="app">
-        <div className="loading">
-          <div className="empty-icon">?</div>
-          <div className="empty-text">No data available</div>
-        </div>
+        <EmptyState />
       </div>
     );
   }
@@ -516,28 +677,33 @@ function App() {
       <header className="header">
         <div className="header-content">
           <div className="logo">
-            <span className="logo-icon">TMG</span>
+            <span className="logo-icon" aria-hidden="true">
+              TMG
+            </span>
             <div>
               <h1>TMG Bench</h1>
               <span>The Mountain Goats AI Knowledge Benchmark</span>
             </div>
           </div>
-          <nav className="nav">
+          <nav className="nav" aria-label="Main navigation">
             <button
               className={`nav-btn ${view === "leaderboard" ? "active" : ""}`}
-              onClick={() => setView("leaderboard")}
+              onClick={() => handleViewChange("leaderboard")}
+              aria-current={view === "leaderboard" ? "page" : undefined}
             >
               Leaderboard
             </button>
             <button
               className={`nav-btn ${view === "comparison" ? "active" : ""}`}
-              onClick={() => setView("comparison")}
+              onClick={() => handleViewChange("comparison")}
+              aria-current={view === "comparison" ? "page" : undefined}
             >
               Comparison
             </button>
             <button
               className={`nav-btn ${view === "analysis" ? "active" : ""}`}
-              onClick={() => setView("analysis")}
+              onClick={() => handleViewChange("analysis")}
+              aria-current={view === "analysis" ? "page" : undefined}
             >
               Analysis
             </button>
@@ -566,47 +732,7 @@ function App() {
           </div>
         )}
 
-        {view === "analysis" && (
-          <div className="charts-container">
-            {data.results
-              .sort((a, b) => b.overallScore - a.overallScore)
-              .slice(0, 5)
-              .map((result) => (
-                <div key={result.modelId} className="chart-card">
-                  <div className="chart-title">
-                    {result.modelName} - Section Performance
-                  </div>
-                  <div className="bar-chart">
-                    {result.sections.map((section) => {
-                      const scoreClass = getScoreClass(section.averageScore);
-                      return (
-                        <div key={section.section} className="bar-row">
-                          <div className="bar-label">{section.section}</div>
-                          <div className="bar-track">
-                            <div
-                              className={`bar-fill ${scoreClass}`}
-                              style={{
-                                width: `${section.averageScore * 100}%`,
-                                background:
-                                  scoreClass === "excellent"
-                                    ? "linear-gradient(90deg, #22c55e, #16a34a)"
-                                    : scoreClass === "good"
-                                      ? "linear-gradient(90deg, #eab308, #ca8a04)"
-                                      : "linear-gradient(90deg, #ef4444, #dc2626)",
-                              }}
-                            />
-                          </div>
-                          <div className={`bar-value ${scoreClass}`}>
-                            {formatScore(section.averageScore)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
+        {view === "analysis" && <AnalysisView results={data.results} />}
       </main>
     </div>
   );
