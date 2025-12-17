@@ -7,12 +7,23 @@ import type {
   SectionResult,
   QuestionResult,
   ViewMode,
+  CostTier,
+  SortOption,
+  SortDirection,
+  RegressionResult,
 } from "./types";
 import {
   getScoreClass,
   formatScore,
   formatLatency,
   getProviderClass,
+  getCostValue,
+  getCostTierLabel,
+  calculateCostPerformanceRegression,
+  calculateLatencyPerformanceRegression,
+  getUniqueProviders,
+  getUniqueCostTiers,
+  COST_VALUES,
 } from "./types";
 
 // Helper to truncate text
@@ -49,9 +60,124 @@ function EmptyState() {
   );
 }
 
-function StatsOverview({ data }: { data: ApiData }) {
+// Filter Controls Component
+function FilterControls({
+  providers,
+  costTiers,
+  selectedProviders,
+  selectedCostTiers,
+  onProviderChange,
+  onCostTierChange,
+  onClearFilters,
+}: {
+  providers: string[];
+  costTiers: CostTier[];
+  selectedProviders: string[];
+  selectedCostTiers: CostTier[];
+  onProviderChange: (providers: string[]) => void;
+  onCostTierChange: (tiers: CostTier[]) => void;
+  onClearFilters: () => void;
+}) {
+  const handleProviderToggle = (provider: string) => {
+    if (selectedProviders.includes(provider)) {
+      onProviderChange(selectedProviders.filter((p) => p !== provider));
+    } else {
+      onProviderChange([...selectedProviders, provider]);
+    }
+  };
+
+  const handleCostTierToggle = (tier: CostTier) => {
+    if (selectedCostTiers.includes(tier)) {
+      onCostTierChange(selectedCostTiers.filter((t) => t !== tier));
+    } else {
+      onCostTierChange([...selectedCostTiers, tier]);
+    }
+  };
+
+  const hasFilters = selectedProviders.length > 0 || selectedCostTiers.length > 0;
+
+  return (
+    <div className="filter-controls">
+      <div className="filter-group">
+        <span className="filter-label">Provider:</span>
+        <div className="filter-chips">
+          {providers.map((provider) => (
+            <button
+              key={provider}
+              className={`filter-chip ${selectedProviders.includes(provider) ? "active" : ""} ${getProviderClass(provider)}`}
+              onClick={() => handleProviderToggle(provider)}
+            >
+              {provider}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="filter-group">
+        <span className="filter-label">Cost:</span>
+        <div className="filter-chips">
+          {costTiers.map((tier) => (
+            <button
+              key={tier}
+              className={`filter-chip cost-${tier} ${selectedCostTiers.includes(tier) ? "active" : ""}`}
+              onClick={() => handleCostTierToggle(tier)}
+            >
+              {getCostTierLabel(tier)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {hasFilters && (
+        <button className="clear-filters-btn" onClick={onClearFilters}>
+          Clear filters
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Sort Controls Component
+function SortControls({
+  sortBy,
+  sortDirection,
+  onSortChange,
+}: {
+  sortBy: SortOption;
+  sortDirection: SortDirection;
+  onSortChange: (option: SortOption) => void;
+}) {
+  const options: { value: SortOption; label: string }[] = [
+    { value: "score", label: "Score" },
+    { value: "name", label: "Name" },
+    { value: "provider", label: "Provider" },
+    { value: "latency", label: "Latency" },
+    { value: "cost", label: "Cost" },
+  ];
+
+  return (
+    <div className="sort-controls">
+      <span className="sort-label">Sort by:</span>
+      <div className="sort-buttons">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            className={`sort-btn ${sortBy === option.value ? "active" : ""}`}
+            onClick={() => onSortChange(option.value)}
+          >
+            {option.label}
+            {sortBy === option.value && (
+              <span className="sort-arrow">
+                {sortDirection === "desc" ? "↓" : "↑"}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatsOverview({ results }: { results: EnhancedBenchmarkResult[] }) {
   const stats = useMemo(() => {
-    const { results } = data;
     if (results.length === 0) {
       return {
         modelCount: 0,
@@ -81,7 +207,7 @@ function StatsOverview({ data }: { data: ApiData }) {
       totalQuestions,
       avgLatency: totalLatency / results.length,
     };
-  }, [data]);
+  }, [results]);
 
   return (
     <section className="stats-grid" aria-label="Benchmark Statistics">
@@ -113,15 +239,39 @@ function Leaderboard({
   results,
   selectedModel,
   onSelectModel,
+  sortBy,
+  sortDirection,
 }: {
   results: EnhancedBenchmarkResult[];
   selectedModel: string | null;
   onSelectModel: (modelId: string | null) => void;
+  sortBy: SortOption;
+  sortDirection: SortDirection;
 }) {
-  const sortedResults = useMemo(
-    () => [...results].sort((a, b) => b.overallScore - a.overallScore),
-    [results]
-  );
+  const sortedResults = useMemo(() => {
+    const sorted = [...results].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "score":
+          comparison = b.overallScore - a.overallScore;
+          break;
+        case "name":
+          comparison = a.modelName.localeCompare(b.modelName);
+          break;
+        case "provider":
+          comparison = a.provider.localeCompare(b.provider);
+          break;
+        case "latency":
+          comparison = a.totalLatencyMs - b.totalLatencyMs;
+          break;
+        case "cost":
+          comparison = getCostValue(a.costTier) - getCostValue(b.costTier);
+          break;
+      }
+      return sortDirection === "asc" ? -comparison : comparison;
+    });
+    return sorted;
+  }, [results, sortBy, sortDirection]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, modelId: string) => {
@@ -142,6 +292,17 @@ function Leaderboard({
     [onSelectModel, selectedModel]
   );
 
+  // Calculate rank based on score
+  const rankedResults = useMemo(() => {
+    const byScore = [...results].sort((a, b) => b.overallScore - a.overallScore);
+    const rankMap = new Map<string, number>();
+    byScore.forEach((r, i) => rankMap.set(r.modelId, i + 1));
+    return sortedResults.map((r) => ({
+      ...r,
+      rank: rankMap.get(r.modelId) ?? 0,
+    }));
+  }, [results, sortedResults]);
+
   return (
     <section
       className="leaderboard animate-fade-in"
@@ -151,12 +312,12 @@ function Leaderboard({
         <div>
           <h2 className="leaderboard-title">Model Leaderboard</h2>
           <div className="leaderboard-subtitle">
-            Ranked by overall accuracy - Click to view details
+            {results.length} models - Click to view details
           </div>
         </div>
       </div>
       <div className="leaderboard-list" role="list">
-        {sortedResults.map((result, index) => {
+        {rankedResults.map((result) => {
           const scoreClass = getScoreClass(result.overallScore);
           const isSelected = selectedModel === result.modelId;
 
@@ -169,19 +330,24 @@ function Leaderboard({
               onClick={() => handleClick(result.modelId)}
               onKeyDown={(e) => handleKeyDown(e, result.modelId)}
               aria-selected={isSelected}
-              aria-label={`${result.modelName}, rank ${index + 1}, score ${formatScore(result.overallScore)}`}
+              aria-label={`${result.modelName}, rank ${result.rank}, score ${formatScore(result.overallScore)}`}
             >
-              <div className={`rank ${index < 3 ? "top-3" : ""}`}>
-                #{index + 1}
+              <div className={`rank ${result.rank <= 3 ? "top-3" : ""}`}>
+                #{result.rank}
               </div>
               <div className="model-info">
                 <div className="model-name">{result.modelName}</div>
-                <div className="model-provider">
+                <div className="model-meta">
                   <span
                     className={`provider-badge ${getProviderClass(result.provider)}`}
                   >
                     {result.provider}
                   </span>
+                  {result.costTier && (
+                    <span className={`cost-badge cost-${result.costTier}`}>
+                      {getCostTierLabel(result.costTier)}
+                    </span>
+                  )}
                 </div>
               </div>
               <div
@@ -194,7 +360,9 @@ function Leaderboard({
                 <div
                   className={`score-bar ${scoreClass}`}
                   style={{ width: `${result.overallScore * 100}%` }}
-                />
+                >
+                  <div className="score-bar-glow" />
+                </div>
               </div>
               <div className={`score-value ${scoreClass}`}>
                 {formatScore(result.overallScore)}
@@ -231,7 +399,9 @@ function SectionBreakdown({ sections }: { sections: SectionResult[] }) {
               <div
                 className={`score-bar ${scoreClass}`}
                 style={{ width: `${section.averageScore * 100}%` }}
-              />
+              >
+                <div className="score-bar-glow" />
+              </div>
             </div>
             <div className="section-stats">
               <div className="section-stat">
@@ -321,7 +491,6 @@ function ModelDetail({ result }: { result: EnhancedBenchmarkResult }) {
     result.sections[0]?.section || ""
   );
 
-  // Reset active section when result changes
   useEffect(() => {
     setActiveSection(result.sections[0]?.section || "");
   }, [result.modelId, result.sections]);
@@ -351,6 +520,11 @@ function ModelDetail({ result }: { result: EnhancedBenchmarkResult }) {
             >
               {result.provider}
             </span>
+            {result.costTier && (
+              <span className={`cost-badge cost-${result.costTier}`}>
+                {getCostTierLabel(result.costTier)}
+              </span>
+            )}
             <span className="detail-separator"> | </span>
             <time dateTime={result.timestamp}>
               {new Date(result.timestamp).toLocaleDateString()}
@@ -403,6 +577,226 @@ function ModelDetail({ result }: { result: EnhancedBenchmarkResult }) {
   );
 }
 
+// Enhanced Bar Chart with gradients and animations
+function EnhancedBarChart({
+  data,
+  title,
+  subtitle,
+  showProvider,
+}: {
+  data: { label: string; value: number; provider?: string; sublabel?: string }[];
+  title: string;
+  subtitle?: string;
+  showProvider?: boolean;
+}) {
+  const maxValue = Math.max(...data.map((d) => d.value), 0.01);
+
+  return (
+    <div className="chart-card enhanced">
+      <div className="chart-header">
+        <h3 className="chart-title">{title}</h3>
+        {subtitle && <p className="chart-subtitle">{subtitle}</p>}
+      </div>
+      <div className="enhanced-bar-chart" role="list">
+        {data.map((item, index) => {
+          const scoreClass = getScoreClass(item.value);
+          const widthPercent = (item.value / maxValue) * 100;
+
+          return (
+            <div
+              key={item.label}
+              className="enhanced-bar-row"
+              role="listitem"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <div className="bar-info">
+                <div className="bar-label" title={item.label}>
+                  {item.label}
+                </div>
+                {item.sublabel && (
+                  <div className="bar-sublabel">{item.sublabel}</div>
+                )}
+                {showProvider && item.provider && (
+                  <span
+                    className={`provider-badge small ${getProviderClass(item.provider)}`}
+                  >
+                    {item.provider}
+                  </span>
+                )}
+              </div>
+              <div className="bar-container">
+                <div className="bar-track-enhanced">
+                  <div
+                    className={`bar-fill-enhanced ${scoreClass}`}
+                    style={{ width: `${widthPercent}%` }}
+                  >
+                    <div className="bar-shine" />
+                  </div>
+                </div>
+                <div className={`bar-value-enhanced ${scoreClass}`}>
+                  {formatScore(item.value)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Scatter Plot Component
+function ScatterPlot({
+  regression,
+  title,
+  xLabel,
+  yLabel,
+  xFormat,
+}: {
+  regression: RegressionResult;
+  title: string;
+  xLabel: string;
+  yLabel: string;
+  xFormat?: (x: number) => string;
+}) {
+  const { points, slope, intercept, rSquared, correlation } = regression;
+
+  if (points.length === 0) {
+    return (
+      <div className="chart-card">
+        <h3 className="chart-title">{title}</h3>
+        <div className="empty-state">No data available</div>
+      </div>
+    );
+  }
+
+  // Calculate bounds
+  const xValues = points.map((p) => p.x);
+  const yValues = points.map((p) => p.y);
+  const xMin = Math.min(...xValues);
+  const xMax = Math.max(...xValues);
+  const yMin = 0;
+  const yMax = 1;
+
+  // Chart dimensions
+  const width = 100;
+  const height = 100;
+  const padding = 15;
+
+  // Scale functions
+  const scaleX = (x: number) =>
+    padding + ((x - xMin) / (xMax - xMin || 1)) * (width - 2 * padding);
+  const scaleY = (y: number) =>
+    height - padding - ((y - yMin) / (yMax - yMin)) * (height - 2 * padding);
+
+  // Regression line points
+  const lineX1 = xMin;
+  const lineX2 = xMax;
+  const lineY1 = slope * lineX1 + intercept;
+  const lineY2 = slope * lineX2 + intercept;
+
+  // Clamp Y values to visible range
+  const clampY = (y: number) => Math.max(yMin, Math.min(yMax, y));
+
+  return (
+    <div className="chart-card scatter">
+      <div className="chart-header">
+        <h3 className="chart-title">{title}</h3>
+        <div className="regression-stats">
+          <span className="stat-pill">
+            R² = {rSquared.toFixed(3)}
+          </span>
+          <span className="stat-pill">
+            r = {correlation.toFixed(3)}
+          </span>
+        </div>
+      </div>
+
+      <div className="scatter-container">
+        <svg viewBox={`0 0 ${width} ${height}`} className="scatter-svg">
+          {/* Grid lines */}
+          <g className="grid-lines">
+            {[0, 0.25, 0.5, 0.75, 1].map((y) => (
+              <line
+                key={y}
+                x1={padding}
+                y1={scaleY(y)}
+                x2={width - padding}
+                y2={scaleY(y)}
+                className="grid-line"
+              />
+            ))}
+          </g>
+
+          {/* Y-axis labels */}
+          <g className="axis-labels">
+            {[0, 0.5, 1].map((y) => (
+              <text
+                key={y}
+                x={padding - 2}
+                y={scaleY(y)}
+                className="axis-label"
+                textAnchor="end"
+                dominantBaseline="middle"
+              >
+                {formatScore(y)}
+              </text>
+            ))}
+          </g>
+
+          {/* Regression line */}
+          <line
+            x1={scaleX(lineX1)}
+            y1={scaleY(clampY(lineY1))}
+            x2={scaleX(lineX2)}
+            y2={scaleY(clampY(lineY2))}
+            className="regression-line"
+          />
+
+          {/* Data points */}
+          {points.map((point, i) => {
+            const scoreClass = getScoreClass(point.y);
+            return (
+              <g key={i} className="scatter-point-group">
+                <circle
+                  cx={scaleX(point.x)}
+                  cy={scaleY(point.y)}
+                  r={3}
+                  className={`scatter-point ${scoreClass}`}
+                />
+                <title>
+                  {point.label}: {xFormat ? xFormat(point.x) : point.x.toFixed(1)} → {formatScore(point.y)}
+                </title>
+              </g>
+            );
+          })}
+        </svg>
+
+        <div className="scatter-labels">
+          <span className="x-label">{xLabel}</span>
+          <span className="y-label">{yLabel}</span>
+        </div>
+      </div>
+
+      <div className="regression-interpretation">
+        {correlation > 0.3 ? (
+          <p className="insight positive">
+            Positive correlation: Higher {xLabel.toLowerCase()} tends to associate with better performance.
+          </p>
+        ) : correlation < -0.3 ? (
+          <p className="insight negative">
+            Negative correlation: Higher {xLabel.toLowerCase()} tends to associate with worse performance.
+          </p>
+        ) : (
+          <p className="insight neutral">
+            Weak correlation: {xLabel} does not strongly predict performance.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
   const [selectedSection, setSelectedSection] = useState("overall");
 
@@ -427,22 +821,21 @@ function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
     [selectedSection]
   );
 
-  const sortedResults = useMemo(() => {
-    return [...results].sort((a, b) => getScore(b) - getScore(a));
+  const chartData = useMemo(() => {
+    return [...results]
+      .sort((a, b) => getScore(b) - getScore(a))
+      .map((r) => ({
+        label: r.modelName,
+        value: getScore(r),
+        provider: r.provider,
+      }));
   }, [results, getScore]);
 
-  const handleSectionChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setSelectedSection(e.target.value);
-    },
-    []
-  );
-
   return (
-    <div className="chart-card">
-      <div className="comparison-header">
-        <h3 className="comparison-title">Score by Section</h3>
-        <div className="comparison-controls">
+    <div className="chart-card enhanced">
+      <div className="chart-header">
+        <h3 className="chart-title">Score by Section</h3>
+        <div className="chart-controls">
           <div className="select-wrapper">
             <label htmlFor="section-select" className="sr-only">
               Select section
@@ -450,7 +843,7 @@ function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
             <select
               id="section-select"
               value={selectedSection}
-              onChange={handleSectionChange}
+              onChange={(e) => setSelectedSection(e.target.value)}
             >
               {sections.map((section) => (
                 <option key={section} value={section}>
@@ -461,29 +854,38 @@ function ComparisonChart({ results }: { results: EnhancedBenchmarkResult[] }) {
           </div>
         </div>
       </div>
-      <div className="bar-chart" role="list" aria-label="Score comparison">
-        {sortedResults.map((result) => {
-          const score = getScore(result);
-          const scoreClass = getScoreClass(score);
+      <div className="enhanced-bar-chart" role="list">
+        {chartData.map((item, index) => {
+          const scoreClass = getScoreClass(item.value);
           return (
-            <div key={result.modelId} className="bar-row" role="listitem">
-              <div className="bar-label" title={result.modelName}>
-                {result.modelName}
+            <div
+              key={item.label}
+              className="enhanced-bar-row"
+              role="listitem"
+              style={{ animationDelay: `${index * 40}ms` }}
+            >
+              <div className="bar-info">
+                <div className="bar-label" title={item.label}>
+                  {item.label}
+                </div>
+                <span
+                  className={`provider-badge small ${getProviderClass(item.provider)}`}
+                >
+                  {item.provider}
+                </span>
               </div>
-              <div
-                className="bar-track"
-                role="progressbar"
-                aria-valuenow={Math.round(score * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div
-                  className={`bar-fill ${scoreClass}`}
-                  style={{ width: `${score * 100}%` }}
-                />
-              </div>
-              <div className={`bar-value ${scoreClass}`}>
-                {formatScore(score)}
+              <div className="bar-container">
+                <div className="bar-track-enhanced">
+                  <div
+                    className={`bar-fill-enhanced ${scoreClass}`}
+                    style={{ width: `${item.value * 100}%` }}
+                  >
+                    <div className="bar-shine" />
+                  </div>
+                </div>
+                <div className={`bar-value-enhanced ${scoreClass}`}>
+                  {formatScore(item.value)}
+                </div>
               </div>
             </div>
           );
@@ -501,7 +903,7 @@ function ProviderComparison({
   const providerStats = useMemo(() => {
     const providers = new Map<
       string,
-      { total: number; count: number; best: number }
+      { total: number; count: number; best: number; worst: number }
     >();
 
     results.forEach((r) => {
@@ -509,10 +911,12 @@ function ProviderComparison({
         total: 0,
         count: 0,
         best: 0,
+        worst: 1,
       };
       current.total += r.overallScore;
       current.count += 1;
       current.best = Math.max(current.best, r.overallScore);
+      current.worst = Math.min(current.worst, r.overallScore);
       providers.set(r.provider, current);
     });
 
@@ -521,41 +925,453 @@ function ProviderComparison({
         provider,
         avgScore: stats.total / stats.count,
         bestScore: stats.best,
+        worstScore: stats.worst,
         modelCount: stats.count,
       }))
       .sort((a, b) => b.bestScore - a.bestScore);
   }, [results]);
 
   return (
-    <div className="chart-card">
-      <h3 className="chart-title">Performance by Provider</h3>
-      <div className="bar-chart" role="list" aria-label="Provider comparison">
-        {providerStats.map((stat) => {
+    <div className="chart-card enhanced">
+      <div className="chart-header">
+        <h3 className="chart-title">Performance by Provider</h3>
+        <p className="chart-subtitle">Best score per provider</p>
+      </div>
+      <div className="enhanced-bar-chart" role="list">
+        {providerStats.map((stat, index) => {
           const scoreClass = getScoreClass(stat.bestScore);
           return (
-            <div key={stat.provider} className="bar-row" role="listitem">
-              <div className="bar-label">
+            <div
+              key={stat.provider}
+              className="enhanced-bar-row"
+              role="listitem"
+              style={{ animationDelay: `${index * 60}ms` }}
+            >
+              <div className="bar-info">
                 <span
                   className={`provider-badge ${getProviderClass(stat.provider)}`}
                 >
                   {stat.provider}
                 </span>
+                <div className="bar-sublabel">
+                  {stat.modelCount} model{stat.modelCount > 1 ? "s" : ""}
+                </div>
               </div>
-              <div
-                className="bar-track"
-                role="progressbar"
-                aria-valuenow={Math.round(stat.bestScore * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
+              <div className="bar-container">
+                <div className="bar-track-enhanced">
+                  <div
+                    className={`bar-fill-enhanced ${scoreClass}`}
+                    style={{ width: `${stat.bestScore * 100}%` }}
+                  >
+                    <div className="bar-shine" />
+                  </div>
+                </div>
+                <div className={`bar-value-enhanced ${scoreClass}`}>
+                  {formatScore(stat.bestScore)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CostTierComparison({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const tierStats = useMemo(() => {
+    const tiers = new Map<
+      CostTier,
+      { total: number; count: number; best: number }
+    >();
+
+    results.forEach((r) => {
+      if (!r.costTier) return;
+      const current = tiers.get(r.costTier) || {
+        total: 0,
+        count: 0,
+        best: 0,
+      };
+      current.total += r.overallScore;
+      current.count += 1;
+      current.best = Math.max(current.best, r.overallScore);
+      tiers.set(r.costTier, current);
+    });
+
+    const order: CostTier[] = ["cheap", "medium", "expensive"];
+    return order
+      .filter((tier) => tiers.has(tier))
+      .map((tier) => {
+        const stats = tiers.get(tier)!;
+        return {
+          tier,
+          avgScore: stats.total / stats.count,
+          bestScore: stats.best,
+          modelCount: stats.count,
+          costValue: COST_VALUES[tier],
+        };
+      });
+  }, [results]);
+
+  return (
+    <div className="chart-card enhanced">
+      <div className="chart-header">
+        <h3 className="chart-title">Performance by Cost Tier</h3>
+        <p className="chart-subtitle">Average score per tier</p>
+      </div>
+      <div className="enhanced-bar-chart" role="list">
+        {tierStats.map((stat, index) => {
+          const scoreClass = getScoreClass(stat.avgScore);
+          return (
+            <div
+              key={stat.tier}
+              className="enhanced-bar-row"
+              role="listitem"
+              style={{ animationDelay: `${index * 80}ms` }}
+            >
+              <div className="bar-info">
+                <span className={`cost-badge large cost-${stat.tier}`}>
+                  {getCostTierLabel(stat.tier)}
+                </span>
+                <div className="bar-sublabel">
+                  {stat.modelCount} model{stat.modelCount > 1 ? "s" : ""} · Best: {formatScore(stat.bestScore)}
+                </div>
+              </div>
+              <div className="bar-container">
+                <div className="bar-track-enhanced">
+                  <div
+                    className={`bar-fill-enhanced ${scoreClass}`}
+                    style={{ width: `${stat.avgScore * 100}%` }}
+                  >
+                    <div className="bar-shine" />
+                  </div>
+                </div>
+                <div className={`bar-value-enhanced ${scoreClass}`}>
+                  {formatScore(stat.avgScore)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Latency Distribution Chart
+function LatencyDistribution({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const sortedByLatency = useMemo(() => {
+    return [...results].sort((a, b) => a.totalLatencyMs - b.totalLatencyMs);
+  }, [results]);
+
+  const maxLatency = Math.max(...results.map((r) => r.totalLatencyMs));
+
+  return (
+    <div className="chart-card enhanced">
+      <div className="chart-header">
+        <h3 className="chart-title">Response Time Distribution</h3>
+        <p className="chart-subtitle">Total latency per model (fastest first)</p>
+      </div>
+      <div className="latency-chart" role="list">
+        {sortedByLatency.map((result, index) => {
+          const widthPercent = (result.totalLatencyMs / maxLatency) * 100;
+          const isSlowOutlier = result.totalLatencyMs > maxLatency * 0.7;
+          const isFast = result.totalLatencyMs < maxLatency * 0.3;
+
+          return (
+            <div
+              key={result.modelId}
+              className="latency-row"
+              role="listitem"
+              style={{ animationDelay: `${index * 30}ms` }}
+            >
+              <div className="latency-label">
+                <span className="latency-name" title={result.modelName}>
+                  {result.modelName}
+                </span>
+                <span
+                  className={`provider-badge small ${getProviderClass(result.provider)}`}
+                >
+                  {result.provider}
+                </span>
+              </div>
+              <div className="latency-bar-container">
                 <div
-                  className={`bar-fill ${scoreClass}`}
-                  style={{ width: `${stat.bestScore * 100}%` }}
+                  className={`latency-bar ${isFast ? "fast" : isSlowOutlier ? "slow" : "normal"}`}
+                  style={{ width: `${widthPercent}%` }}
                 />
+                <span className="latency-value">
+                  {formatLatency(result.totalLatencyMs)}
+                </span>
               </div>
-              <div className={`bar-value ${scoreClass}`}>
-                {formatScore(stat.bestScore)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Section Performance Heatmap
+function SectionHeatmap({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const sectionNames = useMemo(() => {
+    const names = new Set<string>();
+    results.forEach((r) => r.sections.forEach((s) => names.add(s.section)));
+    return Array.from(names);
+  }, [results]);
+
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => b.overallScore - a.overallScore).slice(0, 10);
+  }, [results]);
+
+  const getHeatmapColor = (score: number): string => {
+    if (score >= 0.7) return "heatmap-excellent";
+    if (score >= 0.4) return "heatmap-good";
+    return "heatmap-poor";
+  };
+
+  return (
+    <div className="chart-card heatmap-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Section Performance Heatmap</h3>
+        <p className="chart-subtitle">Top 10 models by section (darker = higher score)</p>
+      </div>
+      <div className="heatmap-container">
+        <div className="heatmap-header">
+          <div className="heatmap-corner" />
+          {sectionNames.map((section) => (
+            <div key={section} className="heatmap-section-label" title={section}>
+              {section.substring(0, 3).toUpperCase()}
+            </div>
+          ))}
+          <div className="heatmap-overall-label">AVG</div>
+        </div>
+        <div className="heatmap-body">
+          {sortedResults.map((result, idx) => (
+            <div key={result.modelId} className="heatmap-row">
+              <div className="heatmap-model" title={result.modelName}>
+                <span className="heatmap-rank">#{idx + 1}</span>
+                {result.modelName}
               </div>
+              {sectionNames.map((sectionName) => {
+                const section = result.sections.find(
+                  (s) => s.section === sectionName
+                );
+                const score = section?.averageScore ?? 0;
+                return (
+                  <div
+                    key={sectionName}
+                    className={`heatmap-cell ${getHeatmapColor(score)}`}
+                    title={`${result.modelName} - ${sectionName}: ${formatScore(score)}`}
+                  >
+                    {Math.round(score * 100)}
+                  </div>
+                );
+              })}
+              <div className={`heatmap-cell overall ${getHeatmapColor(result.overallScore)}`}>
+                {Math.round(result.overallScore * 100)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="heatmap-legend">
+        <span className="legend-item">
+          <span className="legend-color heatmap-poor" /> &lt;40%
+        </span>
+        <span className="legend-item">
+          <span className="legend-color heatmap-good" /> 40-70%
+        </span>
+        <span className="legend-item">
+          <span className="legend-color heatmap-excellent" /> &gt;70%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Quick Stats Row for dense information
+function QuickStatsRow({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const stats = useMemo(() => {
+    if (results.length === 0) return null;
+
+    const scores = results.map((r) => r.overallScore);
+    const latencies = results.map((r) => r.totalLatencyMs);
+
+    const sorted = [...scores].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    const stdDev = Math.sqrt(
+      scores.reduce((sum, s) => sum + Math.pow(s - median, 2), 0) / scores.length
+    );
+
+    const best = results.reduce<EnhancedBenchmarkResult | null>(
+      (b, r) => (!b || r.overallScore > b.overallScore ? r : b),
+      null
+    );
+    const fastest = results.reduce<EnhancedBenchmarkResult | null>(
+      (f, r) => (!f || r.totalLatencyMs < f.totalLatencyMs ? r : f),
+      null
+    );
+
+    return {
+      median,
+      stdDev,
+      best,
+      fastest,
+      avgLatency: latencies.reduce((a, b) => a + b, 0) / latencies.length,
+      range: Math.max(...scores) - Math.min(...scores),
+    };
+  }, [results]);
+
+  if (!stats) return null;
+
+  return (
+    <div className="quick-stats-row">
+      <div className="quick-stat">
+        <span className="quick-stat-value">{formatScore(stats.median)}</span>
+        <span className="quick-stat-label">Median Score</span>
+      </div>
+      <div className="quick-stat">
+        <span className="quick-stat-value">±{formatScore(stats.stdDev)}</span>
+        <span className="quick-stat-label">Std Deviation</span>
+      </div>
+      <div className="quick-stat">
+        <span className="quick-stat-value">{formatScore(stats.range)}</span>
+        <span className="quick-stat-label">Score Range</span>
+      </div>
+      <div className="quick-stat highlight">
+        <span className="quick-stat-value">{stats.best?.modelName || "N/A"}</span>
+        <span className="quick-stat-label">Best Model ({formatScore(stats.best?.overallScore ?? 0)})</span>
+      </div>
+      <div className="quick-stat highlight">
+        <span className="quick-stat-value">{stats.fastest?.modelName || "N/A"}</span>
+        <span className="quick-stat-label">Fastest ({formatLatency(stats.fastest?.totalLatencyMs ?? 0)})</span>
+      </div>
+    </div>
+  );
+}
+
+// Top Performers per Section (compact table)
+function TopPerformersTable({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const sectionLeaders = useMemo(() => {
+    const sections = new Map<string, { model: string; provider: string; score: number }>();
+
+    results.forEach((r) => {
+      r.sections.forEach((s) => {
+        const current = sections.get(s.section);
+        if (!current || s.averageScore > current.score) {
+          sections.set(s.section, {
+            model: r.modelName,
+            provider: r.provider,
+            score: s.averageScore,
+          });
+        }
+      });
+    });
+
+    return Array.from(sections.entries()).map(([section, data]) => ({
+      section,
+      ...data,
+    }));
+  }, [results]);
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Section Leaders</h3>
+        <p className="chart-subtitle">Best performing model per section</p>
+      </div>
+      <table className="leaders-table">
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Model</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sectionLeaders.map((leader) => (
+            <tr key={leader.section}>
+              <td className="section-cell">{leader.section}</td>
+              <td className="model-cell">
+                <span>{leader.model}</span>
+                <span className={`provider-badge tiny ${getProviderClass(leader.provider)}`}>
+                  {leader.provider}
+                </span>
+              </td>
+              <td className={`score-cell ${getScoreClass(leader.score)}`}>
+                {formatScore(leader.score)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Score Distribution Histogram
+function ScoreDistribution({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const buckets = useMemo(() => {
+    const bins: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // 0-10, 10-20, ..., 90-100
+    results.forEach((r) => {
+      const idx = Math.min(9, Math.max(0, Math.floor(r.overallScore * 10)));
+      const current = bins[idx];
+      if (current !== undefined) {
+        bins[idx] = current + 1;
+      }
+    });
+    return bins;
+  }, [results]);
+
+  const maxCount = Math.max(...buckets, 1);
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Score Distribution</h3>
+        <p className="chart-subtitle">Number of models in each score range</p>
+      </div>
+      <div className="histogram">
+        {buckets.map((count, idx) => {
+          const heightPercent = (count / maxCount) * 100;
+          const isGood = idx >= 4;
+          const isExcellent = idx >= 7;
+
+          return (
+            <div key={idx} className="histogram-bar-wrapper">
+              <div
+                className={`histogram-bar ${isExcellent ? "excellent" : isGood ? "good" : "poor"}`}
+                style={{ height: `${heightPercent}%` }}
+                title={`${idx * 10}-${(idx + 1) * 10}%: ${count} models`}
+              >
+                {count > 0 && <span className="histogram-count">{count}</span>}
+              </div>
+              <span className="histogram-label">{idx * 10}</span>
             </div>
           );
         })}
@@ -571,38 +1387,174 @@ function AnalysisView({ results }: { results: EnhancedBenchmarkResult[] }) {
 
   return (
     <div className="charts-container">
-      {topResults.map((result) => (
-        <div key={result.modelId} className="chart-card">
-          <h3 className="chart-title">
-            {result.modelName} - Section Performance
-          </h3>
-          <div className="bar-chart" role="list">
-            {result.sections.map((section) => {
-              const scoreClass = getScoreClass(section.averageScore);
-              return (
-                <div key={section.section} className="bar-row" role="listitem">
-                  <div className="bar-label">{section.section}</div>
-                  <div
-                    className="bar-track"
-                    role="progressbar"
-                    aria-valuenow={Math.round(section.averageScore * 100)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className={`bar-fill ${scoreClass}`}
-                      style={{ width: `${section.averageScore * 100}%` }}
-                    />
-                  </div>
-                  <div className={`bar-value ${scoreClass}`}>
-                    {formatScore(section.averageScore)}
-                  </div>
-                </div>
-              );
-            })}
+      {topResults.map((result) => {
+        const chartData = result.sections.map((section) => ({
+          label: section.section,
+          value: section.averageScore,
+        }));
+
+        return (
+          <EnhancedBarChart
+            key={result.modelId}
+            data={chartData}
+            title={result.modelName}
+            subtitle="Section Performance"
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// New Insights View with Regression Analysis
+function InsightsView({ results }: { results: EnhancedBenchmarkResult[] }) {
+  const costRegression = useMemo(
+    () => calculateCostPerformanceRegression(results),
+    [results]
+  );
+
+  const latencyRegression = useMemo(
+    () => calculateLatencyPerformanceRegression(results),
+    [results]
+  );
+
+  // Value efficiency: score per cost unit
+  const valueEfficiency = useMemo(() => {
+    return [...results]
+      .map((r) => ({
+        label: r.modelName,
+        value: r.overallScore / getCostValue(r.costTier),
+        provider: r.provider,
+        sublabel: `${formatScore(r.overallScore)} / ${getCostTierLabel(r.costTier || "medium")}`,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [results]);
+
+  // Speed efficiency: score per second of latency
+  const speedEfficiency = useMemo(() => {
+    return [...results]
+      .map((r) => ({
+        label: r.modelName,
+        value: r.overallScore / (r.totalLatencyMs / 1000),
+        provider: r.provider,
+        sublabel: `${formatScore(r.overallScore)} in ${formatLatency(r.totalLatencyMs)}`,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [results]);
+
+  const formatCost = (x: number) => {
+    if (x <= 1) return "Cheap";
+    if (x <= 3) return "Medium";
+    return "Expensive";
+  };
+
+  const formatLatencyX = (x: number) => `${x.toFixed(0)}s`;
+
+  return (
+    <div className="insights-view">
+      <div className="insights-header">
+        <h2>Performance Insights</h2>
+        <p>Statistical analysis of model performance vs cost and latency</p>
+      </div>
+
+      <div className="insights-grid">
+        <ScatterPlot
+          regression={costRegression}
+          title="Cost vs Performance"
+          xLabel="Cost Tier"
+          yLabel="Score"
+          xFormat={formatCost}
+        />
+
+        <ScatterPlot
+          regression={latencyRegression}
+          title="Latency vs Performance"
+          xLabel="Total Latency (seconds)"
+          yLabel="Score"
+          xFormat={formatLatencyX}
+        />
+
+        <EnhancedBarChart
+          data={valueEfficiency}
+          title="Value Efficiency"
+          subtitle="Score per cost unit (higher = better value)"
+          showProvider
+        />
+
+        <EnhancedBarChart
+          data={speedEfficiency}
+          title="Speed Efficiency"
+          subtitle="Score per second (higher = faster results)"
+          showProvider
+        />
+      </div>
+
+      <div className="insights-summary">
+        <h3>Key Findings</h3>
+        <div className="findings-grid">
+          <div className="finding-card">
+            <div className="finding-icon">💰</div>
+            <div className="finding-content">
+              <h4>Cost-Performance</h4>
+              <p>
+                {costRegression.correlation > 0.3
+                  ? "Higher cost models tend to perform better."
+                  : costRegression.correlation < -0.3
+                    ? "Surprisingly, cheaper models perform better on average."
+                    : "Cost tier is not a strong predictor of performance."}
+              </p>
+              <span className="finding-stat">
+                Correlation: {(costRegression.correlation * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="finding-card">
+            <div className="finding-icon">⚡</div>
+            <div className="finding-content">
+              <h4>Speed-Performance</h4>
+              <p>
+                {latencyRegression.correlation > 0.3
+                  ? "Slower models tend to be more accurate."
+                  : latencyRegression.correlation < -0.3
+                    ? "Faster models tend to perform better."
+                    : "Response time does not strongly correlate with accuracy."}
+              </p>
+              <span className="finding-stat">
+                Correlation: {(latencyRegression.correlation * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="finding-card">
+            <div className="finding-icon">🏆</div>
+            <div className="finding-content">
+              <h4>Best Value</h4>
+              <p>
+                {valueEfficiency[0]?.label || "N/A"} offers the best score-to-cost ratio.
+              </p>
+              <span className="finding-stat">
+                Provider: {valueEfficiency[0]?.provider || "N/A"}
+              </span>
+            </div>
+          </div>
+
+          <div className="finding-card">
+            <div className="finding-icon">🚀</div>
+            <div className="finding-content">
+              <h4>Fastest Accurate</h4>
+              <p>
+                {speedEfficiency[0]?.label || "N/A"} provides the best speed-to-accuracy ratio.
+              </p>
+              <span className="finding-stat">
+                Provider: {speedEfficiency[0]?.provider || "N/A"}
+              </span>
+            </div>
           </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -613,6 +1565,14 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("leaderboard");
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+
+  // Filter state
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedCostTiers, setSelectedCostTiers] = useState<CostTier[]>([]);
+
+  // Sort state
+  const [sortBy, setSortBy] = useState<SortOption>("score");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -638,14 +1598,63 @@ function App() {
     return () => controller.abort();
   }, []);
 
+  // Memoized filter values
+  const providers = useMemo(
+    () => (data ? getUniqueProviders(data.results) : []),
+    [data]
+  );
+
+  const costTiers = useMemo(
+    () => (data ? getUniqueCostTiers(data.results) : []),
+    [data]
+  );
+
+  // Filtered results
+  const filteredResults = useMemo(() => {
+    if (!data) return [];
+
+    return data.results.filter((r) => {
+      if (
+        selectedProviders.length > 0 &&
+        !selectedProviders.includes(r.provider)
+      ) {
+        return false;
+      }
+      if (
+        selectedCostTiers.length > 0 &&
+        (!r.costTier || !selectedCostTiers.includes(r.costTier))
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [data, selectedProviders, selectedCostTiers]);
+
   const selectedResult = useMemo(
-    () => data?.results.find((r) => r.modelId === selectedModel),
-    [data, selectedModel]
+    () => filteredResults.find((r) => r.modelId === selectedModel),
+    [filteredResults, selectedModel]
   );
 
   const handleViewChange = useCallback((newView: ViewMode) => {
     setView(newView);
     setSelectedModel(null);
+  }, []);
+
+  const handleSortChange = useCallback(
+    (option: SortOption) => {
+      if (sortBy === option) {
+        setSortDirection((d) => (d === "desc" ? "asc" : "desc"));
+      } else {
+        setSortBy(option);
+        setSortDirection("desc");
+      }
+    },
+    [sortBy]
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setSelectedProviders([]);
+    setSelectedCostTiers([]);
   }, []);
 
   if (loading) {
@@ -707,32 +1716,72 @@ function App() {
             >
               Analysis
             </button>
+            <button
+              className={`nav-btn ${view === "insights" ? "active" : ""}`}
+              onClick={() => handleViewChange("insights")}
+              aria-current={view === "insights" ? "page" : undefined}
+            >
+              Insights
+            </button>
           </nav>
         </div>
       </header>
 
       <main className="main">
-        <StatsOverview data={data} />
+        <StatsOverview results={filteredResults} />
+
+        {(view === "leaderboard" || view === "comparison") && (
+          <div className="controls-bar">
+            <FilterControls
+              providers={providers}
+              costTiers={costTiers}
+              selectedProviders={selectedProviders}
+              selectedCostTiers={selectedCostTiers}
+              onProviderChange={setSelectedProviders}
+              onCostTierChange={setSelectedCostTiers}
+              onClearFilters={handleClearFilters}
+            />
+            {view === "leaderboard" && (
+              <SortControls
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+              />
+            )}
+          </div>
+        )}
 
         {view === "leaderboard" && (
           <>
             <Leaderboard
-              results={data.results}
+              results={filteredResults}
               selectedModel={selectedModel}
               onSelectModel={setSelectedModel}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
             />
             {selectedResult && <ModelDetail result={selectedResult} />}
           </>
         )}
 
         {view === "comparison" && (
-          <div className="charts-container">
-            <ComparisonChart results={data.results} />
-            <ProviderComparison results={data.results} />
-          </div>
+          <>
+            <QuickStatsRow results={filteredResults} />
+            <div className="charts-container dense">
+              <SectionHeatmap results={filteredResults} />
+              <ComparisonChart results={filteredResults} />
+              <ProviderComparison results={filteredResults} />
+              <CostTierComparison results={filteredResults} />
+              <LatencyDistribution results={filteredResults} />
+              <ScoreDistribution results={filteredResults} />
+              <TopPerformersTable results={filteredResults} />
+            </div>
+          </>
         )}
 
-        {view === "analysis" && <AnalysisView results={data.results} />}
+        {view === "analysis" && <AnalysisView results={filteredResults} />}
+
+        {view === "insights" && <InsightsView results={data.results} />}
       </main>
     </div>
   );

@@ -39,6 +39,7 @@ async function loadBenchmarkData() {
         modelId,
         modelName: modelConfig?.name ?? modelId,
         provider: modelConfig?.provider ?? "Unknown",
+        costTier: modelConfig?.costTier ?? "medium",
         ...result,
       };
     });
