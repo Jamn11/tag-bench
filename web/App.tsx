@@ -1380,6 +1380,478 @@ function ScoreDistribution({
   );
 }
 
+// Performance Quadrant Chart (Speed vs Accuracy)
+function PerformanceQuadrant({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const data = useMemo(() => {
+    const latencies = results.map((r) => r.totalLatencyMs);
+    const scores = results.map((r) => r.overallScore);
+    const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    return {
+      points: results.map((r) => ({
+        x: r.totalLatencyMs,
+        y: r.overallScore,
+        label: r.modelName,
+        provider: r.provider,
+        quadrant:
+          r.overallScore >= avgScore && r.totalLatencyMs <= avgLatency
+            ? "star" // Fast & Accurate
+            : r.overallScore >= avgScore && r.totalLatencyMs > avgLatency
+              ? "thorough" // Slow but Accurate
+              : r.overallScore < avgScore && r.totalLatencyMs <= avgLatency
+                ? "quick" // Fast but Less Accurate
+                : "avoid", // Slow & Less Accurate
+      })),
+      avgLatency,
+      avgScore,
+      maxLatency: Math.max(...latencies),
+      minLatency: Math.min(...latencies),
+    };
+  }, [results]);
+
+  const width = 200;
+  const height = 200;
+  const padding = 25;
+
+  const scaleX = (x: number) =>
+    padding +
+    ((x - data.minLatency) / (data.maxLatency - data.minLatency || 1)) *
+      (width - 2 * padding);
+  const scaleY = (y: number) =>
+    height - padding - y * (height - 2 * padding);
+
+  const avgX = scaleX(data.avgLatency);
+  const avgY = scaleY(data.avgScore);
+
+  return (
+    <div className="chart-card quadrant-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Performance Quadrant</h3>
+        <p className="chart-subtitle">Speed vs Accuracy tradeoffs</p>
+      </div>
+      <div className="quadrant-container">
+        <svg viewBox={`0 0 ${width} ${height}`} className="quadrant-svg">
+          {/* Quadrant backgrounds */}
+          <rect
+            x={padding}
+            y={padding}
+            width={avgX - padding}
+            height={avgY - padding}
+            className="quadrant-bg star"
+          />
+          <rect
+            x={avgX}
+            y={padding}
+            width={width - padding - avgX}
+            height={avgY - padding}
+            className="quadrant-bg thorough"
+          />
+          <rect
+            x={padding}
+            y={avgY}
+            width={avgX - padding}
+            height={height - padding - avgY}
+            className="quadrant-bg quick"
+          />
+          <rect
+            x={avgX}
+            y={avgY}
+            width={width - padding - avgX}
+            height={height - padding - avgY}
+            className="quadrant-bg avoid"
+          />
+
+          {/* Axis lines */}
+          <line
+            x1={avgX}
+            y1={padding}
+            x2={avgX}
+            y2={height - padding}
+            className="quadrant-axis"
+          />
+          <line
+            x1={padding}
+            y1={avgY}
+            x2={width - padding}
+            y2={avgY}
+            className="quadrant-axis"
+          />
+
+          {/* Points */}
+          {data.points.map((point, i) => (
+            <g key={i} className="quadrant-point-group">
+              <circle
+                cx={scaleX(point.x)}
+                cy={scaleY(point.y)}
+                r={4}
+                className={`quadrant-point ${point.quadrant}`}
+              />
+              <title>
+                {point.label}: {formatScore(point.y)} in{" "}
+                {formatLatency(point.x)}
+              </title>
+            </g>
+          ))}
+        </svg>
+        <div className="quadrant-labels">
+          <span className="ql-top-left">Fast & Accurate</span>
+          <span className="ql-top-right">Thorough</span>
+          <span className="ql-bottom-left">Quick</span>
+          <span className="ql-bottom-right">Slow</span>
+        </div>
+      </div>
+      <div className="quadrant-legend">
+        <span className="ql-item star">
+          {data.points.filter((p) => p.quadrant === "star").length} optimal
+        </span>
+        <span className="ql-item thorough">
+          {data.points.filter((p) => p.quadrant === "thorough").length} thorough
+        </span>
+        <span className="ql-item quick">
+          {data.points.filter((p) => p.quadrant === "quick").length} quick
+        </span>
+        <span className="ql-item avoid">
+          {data.points.filter((p) => p.quadrant === "avoid").length} slow
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Section Difficulty Analysis
+function SectionDifficulty({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const sectionStats = useMemo(() => {
+    const sections = new Map<
+      string,
+      { scores: number[]; totalQuestions: number }
+    >();
+
+    results.forEach((r) => {
+      r.sections.forEach((s) => {
+        const current = sections.get(s.section) || {
+          scores: [],
+          totalQuestions: s.totalQuestions,
+        };
+        current.scores.push(s.averageScore);
+        sections.set(s.section, current);
+      });
+    });
+
+    return Array.from(sections.entries())
+      .map(([section, data]) => {
+        const avg = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+        const sorted = [...data.scores].sort((a, b) => a - b);
+        const min = sorted[0] ?? 0;
+        const max = sorted[sorted.length - 1] ?? 0;
+        return {
+          section,
+          avgScore: avg,
+          minScore: min,
+          maxScore: max,
+          spread: max - min,
+          questions: data.totalQuestions,
+        };
+      })
+      .sort((a, b) => a.avgScore - b.avgScore); // Hardest first
+  }, [results]);
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header">
+        <h3 className="chart-title">Section Difficulty</h3>
+        <p className="chart-subtitle">Hardest sections first (with score range)</p>
+      </div>
+      <div className="difficulty-chart">
+        {sectionStats.map((stat, idx) => {
+          const scoreClass = getScoreClass(stat.avgScore);
+          return (
+            <div key={stat.section} className="difficulty-row">
+              <div className="difficulty-info">
+                <span className="difficulty-rank">#{idx + 1}</span>
+                <span className="difficulty-name">{stat.section}</span>
+                <span className="difficulty-questions">
+                  {stat.questions} Q
+                </span>
+              </div>
+              <div className="difficulty-bar-wrapper">
+                <div className="difficulty-range">
+                  <div
+                    className="difficulty-range-bar"
+                    style={{
+                      left: `${stat.minScore * 100}%`,
+                      width: `${stat.spread * 100}%`,
+                    }}
+                  />
+                  <div
+                    className={`difficulty-avg-marker ${scoreClass}`}
+                    style={{ left: `${stat.avgScore * 100}%` }}
+                  />
+                </div>
+                <span className={`difficulty-score ${scoreClass}`}>
+                  {formatScore(stat.avgScore)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Provider Head-to-Head Comparison
+function ProviderHeadToHead({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const providerData = useMemo(() => {
+    const providers = new Map<
+      string,
+      {
+        scores: number[];
+        latencies: number[];
+        costs: number[];
+        models: string[];
+      }
+    >();
+
+    results.forEach((r) => {
+      const current = providers.get(r.provider) || {
+        scores: [],
+        latencies: [],
+        costs: [],
+        models: [],
+      };
+      current.scores.push(r.overallScore);
+      current.latencies.push(r.totalLatencyMs);
+      current.costs.push(getCostValue(r.costTier));
+      current.models.push(r.modelName);
+      providers.set(r.provider, current);
+    });
+
+    return Array.from(providers.entries())
+      .map(([provider, data]) => ({
+        provider,
+        avgScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
+        bestScore: Math.max(...data.scores),
+        avgLatency: data.latencies.reduce((a, b) => a + b, 0) / data.latencies.length,
+        avgCost: data.costs.reduce((a, b) => a + b, 0) / data.costs.length,
+        modelCount: data.models.length,
+        topModel: data.models[data.scores.indexOf(Math.max(...data.scores))],
+      }))
+      .sort((a, b) => b.bestScore - a.bestScore);
+  }, [results]);
+
+  return (
+    <div className="chart-card provider-h2h">
+      <div className="chart-header">
+        <h3 className="chart-title">Provider Comparison</h3>
+        <p className="chart-subtitle">Head-to-head metrics</p>
+      </div>
+      <div className="h2h-grid">
+        {providerData.map((p) => (
+          <div key={p.provider} className="h2h-card">
+            <div className="h2h-header">
+              <span className={`provider-badge ${getProviderClass(p.provider)}`}>
+                {p.provider}
+              </span>
+              <span className="h2h-model-count">{p.modelCount} models</span>
+            </div>
+            <div className="h2h-stats">
+              <div className="h2h-stat">
+                <span className={`h2h-value ${getScoreClass(p.bestScore)}`}>
+                  {formatScore(p.bestScore)}
+                </span>
+                <span className="h2h-label">Best</span>
+              </div>
+              <div className="h2h-stat">
+                <span className={`h2h-value ${getScoreClass(p.avgScore)}`}>
+                  {formatScore(p.avgScore)}
+                </span>
+                <span className="h2h-label">Avg</span>
+              </div>
+              <div className="h2h-stat">
+                <span className="h2h-value">{formatLatency(p.avgLatency)}</span>
+                <span className="h2h-label">Latency</span>
+              </div>
+            </div>
+            <div className="h2h-top-model">
+              Top: {p.topModel}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Compact Model Cards
+function CompactModelCards({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => b.overallScore - a.overallScore);
+  }, [results]);
+
+  return (
+    <div className="chart-card compact-cards-container">
+      <div className="chart-header">
+        <h3 className="chart-title">All Models</h3>
+        <p className="chart-subtitle">{results.length} models ranked by score</p>
+      </div>
+      <div className="compact-cards-grid">
+        {sortedResults.map((result, idx) => {
+          const scoreClass = getScoreClass(result.overallScore);
+          return (
+            <div key={result.modelId} className="compact-card">
+              <div className="compact-rank">#{idx + 1}</div>
+              <div className="compact-main">
+                <div className="compact-name" title={result.modelName}>
+                  {result.modelName}
+                </div>
+                <div className="compact-meta">
+                  <span
+                    className={`provider-badge tiny ${getProviderClass(result.provider)}`}
+                  >
+                    {result.provider}
+                  </span>
+                  {result.costTier && (
+                    <span className={`cost-badge tiny cost-${result.costTier}`}>
+                      {result.costTier[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="compact-stats">
+                <span className={`compact-score ${scoreClass}`}>
+                  {formatScore(result.overallScore)}
+                </span>
+                <span className="compact-latency">
+                  {formatLatency(result.totalLatencyMs)}
+                </span>
+              </div>
+              <div className="compact-sparkline">
+                {result.sections.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`spark-bar ${getScoreClass(s.averageScore)}`}
+                    style={{ height: `${s.averageScore * 100}%` }}
+                    title={`${s.section}: ${formatScore(s.averageScore)}`}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Mini Metrics Row (dense stats)
+function MiniMetricsRow({
+  results,
+}: {
+  results: EnhancedBenchmarkResult[];
+}) {
+  const metrics = useMemo(() => {
+    if (results.length === 0) return null;
+
+    const scores = results.map((r) => r.overallScore);
+    const latencies = results.map((r) => r.totalLatencyMs);
+
+    // Count by tier
+    const tiers = { cheap: 0, medium: 0, expensive: 0 };
+    results.forEach((r) => {
+      if (r.costTier) tiers[r.costTier]++;
+    });
+
+    // Provider counts
+    const providers = new Map<string, number>();
+    results.forEach((r) => {
+      providers.set(r.provider, (providers.get(r.provider) || 0) + 1);
+    });
+
+    // Perfect scores (100%)
+    const perfect = results.filter((r) => r.overallScore >= 0.99).length;
+
+    // Failing scores (<50%)
+    const failing = results.filter((r) => r.overallScore < 0.5).length;
+
+    return {
+      total: results.length,
+      avgScore: scores.reduce((a, b) => a + b, 0) / scores.length,
+      maxScore: Math.max(...scores),
+      minScore: Math.min(...scores),
+      avgLatency: latencies.reduce((a, b) => a + b, 0) / latencies.length,
+      minLatency: Math.min(...latencies),
+      maxLatency: Math.max(...latencies),
+      tiers,
+      providerCount: providers.size,
+      perfect,
+      failing,
+    };
+  }, [results]);
+
+  if (!metrics) return null;
+
+  return (
+    <div className="mini-metrics">
+      <div className="mm-group">
+        <span className="mm-icon">📊</span>
+        <span className="mm-value">{metrics.total}</span>
+        <span className="mm-label">Models</span>
+      </div>
+      <div className="mm-group">
+        <span className="mm-icon">🏆</span>
+        <span className={`mm-value ${getScoreClass(metrics.maxScore)}`}>
+          {formatScore(metrics.maxScore)}
+        </span>
+        <span className="mm-label">Best</span>
+      </div>
+      <div className="mm-group">
+        <span className="mm-icon">📈</span>
+        <span className={`mm-value ${getScoreClass(metrics.avgScore)}`}>
+          {formatScore(metrics.avgScore)}
+        </span>
+        <span className="mm-label">Avg</span>
+      </div>
+      <div className="mm-group">
+        <span className="mm-icon">⚡</span>
+        <span className="mm-value">{formatLatency(metrics.minLatency)}</span>
+        <span className="mm-label">Fastest</span>
+      </div>
+      <div className="mm-group tier">
+        <span className="mm-tier cheap">{metrics.tiers.cheap}$</span>
+        <span className="mm-tier medium">{metrics.tiers.medium}$$</span>
+        <span className="mm-tier expensive">{metrics.tiers.expensive}$$$</span>
+      </div>
+      <div className="mm-group">
+        <span className="mm-icon">🎯</span>
+        <span className="mm-value">{metrics.perfect}</span>
+        <span className="mm-label">Perfect</span>
+      </div>
+      <div className="mm-group">
+        <span className="mm-icon">⚠️</span>
+        <span className="mm-value warn">{metrics.failing}</span>
+        <span className="mm-label">&lt;50%</span>
+      </div>
+    </div>
+  );
+}
+
 function AnalysisView({ results }: { results: EnhancedBenchmarkResult[] }) {
   const topResults = useMemo(() => {
     return [...results].sort((a, b) => b.overallScore - a.overallScore).slice(0, 5);
@@ -1766,20 +2238,35 @@ function App() {
 
         {view === "comparison" && (
           <>
+            <MiniMetricsRow results={filteredResults} />
             <QuickStatsRow results={filteredResults} />
             <div className="charts-container dense">
               <SectionHeatmap results={filteredResults} />
+              <PerformanceQuadrant results={filteredResults} />
+              <ProviderHeadToHead results={filteredResults} />
               <ComparisonChart results={filteredResults} />
               <ProviderComparison results={filteredResults} />
               <CostTierComparison results={filteredResults} />
+              <SectionDifficulty results={filteredResults} />
               <LatencyDistribution results={filteredResults} />
               <ScoreDistribution results={filteredResults} />
               <TopPerformersTable results={filteredResults} />
             </div>
+            <CompactModelCards results={filteredResults} />
           </>
         )}
 
-        {view === "analysis" && <AnalysisView results={filteredResults} />}
+        {view === "analysis" && (
+          <>
+            <MiniMetricsRow results={filteredResults} />
+            <div className="charts-container dense">
+              <PerformanceQuadrant results={filteredResults} />
+              <SectionDifficulty results={filteredResults} />
+              <ProviderHeadToHead results={filteredResults} />
+            </div>
+            <AnalysisView results={filteredResults} />
+          </>
+        )}
 
         {view === "insights" && <InsightsView results={data.results} />}
       </main>
