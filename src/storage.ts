@@ -54,3 +54,28 @@ export async function deleteResult(modelId: string): Promise<void> {
     await unlink(path);
   }
 }
+
+export interface QuestionsData {
+  lists: import("./types").Question[];
+  shortAnswer: import("./types").Question[];
+  quotes: import("./types").Question[];
+  multipleChoice: import("./types").Question[];
+}
+
+export async function loadQuestions(): Promise<QuestionsData> {
+  const questionsDir = "./questions";
+  const lists = existsSync(`${questionsDir}/lists.json`)
+    ? await Bun.file(`${questionsDir}/lists.json`).json()
+    : [];
+  const shortAnswer = existsSync(`${questionsDir}/short-answer.json`)
+    ? await Bun.file(`${questionsDir}/short-answer.json`).json()
+    : [];
+  const quotes = existsSync(`${questionsDir}/quotes.json`)
+    ? await Bun.file(`${questionsDir}/quotes.json`).json()
+    : [];
+  const multipleChoice = existsSync(`${questionsDir}/multiple-choice.json`)
+    ? await Bun.file(`${questionsDir}/multiple-choice.json`).json()
+    : [];
+
+  return { lists, shortAnswer, quotes, multipleChoice };
+}
