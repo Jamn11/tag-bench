@@ -92,6 +92,15 @@ export const MODELS: ModelConfig[] = [
     costTier: "cheap",
   },
 
+  // Z.AI (GLM)
+  {
+    id: "glm-4.7",
+    name: "GLM 4.7",
+    provider: "Z.AI",
+    code: "z-ai/glm-4.7",
+    costTier: "medium",
+  },
+
   // OpenAI - GPT 5
   {
     id: "gpt-5",

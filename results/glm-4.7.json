@@ -1,0 +1,464 @@
+{
+  "model": "z-ai/glm-4.7",
+  "timestamp": "2025-12-25T18:14:55.705Z",
+  "sections": [
+    {
+      "section": "short-answer",
+      "totalQuestions": 16,
+      "correctCount": 12,
+      "averageScore": 0.75,
+      "results": [
+        {
+          "questionId": "sa-001",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "John Darnielle",
+          "expectedAnswer": "John Darnielle",
+          "latencyMs": 3562.851059,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-002",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "1991",
+          "expectedAnswer": "1991",
+          "latencyMs": 4339.969704,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-002",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Taboo VI: The Homecoming",
+          "expectedAnswer": "Taboo VI: The Homecoming",
+          "latencyMs": 5412.199844000001,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-004",
+          "type": "short-answer",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Taboo VI: The Homecoming",
+          "expectedAnswer": "Zopilote Machine",
+          "latencyMs": 18548.124218,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-005",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Peter Hughes",
+          "expectedAnswer": "Peter Hughes",
+          "latencyMs": 5670.2803189999995,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-006",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Moon Colony Bloodbath",
+          "expectedAnswer": "Moon Colony Bloodbath",
+          "latencyMs": 4814.3778,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-007",
+          "type": "short-answer",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "[TIMEOUT]",
+          "expectedAnswer": "Jenny",
+          "latencyMs": 120001.641529,
+          "timedOut": true
+        },
+        {
+          "questionId": "sa-008",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Jon Wurster",
+          "expectedAnswer": "Jon Wurster",
+          "latencyMs": 3948.530174,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-009",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Claremont",
+          "expectedAnswer": "Claremont",
+          "latencyMs": 4351.425513,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-010",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Hail Satan",
+          "expectedAnswer": "Hail Satan",
+          "latencyMs": 12229.814051,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-011",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Wolf in White Van",
+          "expectedAnswer": "Wolf in White Van",
+          "latencyMs": 2836.919119,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-012",
+          "type": "short-answer",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "[TIMEOUT]",
+          "expectedAnswer": "Rome",
+          "latencyMs": 120002.128086,
+          "timedOut": true
+        },
+        {
+          "questionId": "sa-013",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Jerusalem",
+          "expectedAnswer": "Jerusalem",
+          "latencyMs": 53204.674535,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-014",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Abuse",
+          "expectedAnswer": "abuse",
+          "latencyMs": 8206.521636,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-015",
+          "type": "short-answer",
+          "correct": true,
+          "score": 1,
+          "modelResponse": "Panasonic RX-FT500",
+          "expectedAnswer": "Panasonic RX-FT500",
+          "latencyMs": 5311.8473189999995,
+          "timedOut": false
+        },
+        {
+          "questionId": "sa-016",
+          "type": "short-answer",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Hast Thou Considered the Tetrapod",
+          "expectedAnswer": "Twin Human Highway Flares",
+          "latencyMs": 46026.215368000005,
+          "timedOut": false
+        }
+      ]
+    },
+    {
+      "section": "lists",
+      "totalQuestions": 28,
+      "correctCount": 0,
+      "averageScore": 0.062351965077528985,
+      "results": [
+        {
+          "questionId": "list-001",
+          "type": "list",
+          "correct": false,
+          "score": 0.05263157894736842,
+          "modelResponse": "Alpha Incipiens\nZopilote Machine (Going to)\nThe White Cup\nLemon Jelly\nRotten Peaches\nGolden Boy\nThe Recognition Scene\nGoing to Port Washington\nThe Last Dead Confederate Soldier\nThe Hound Chronicles\nAction Man\nBadger\nThe Big Red X\nThe Window Song\nPure Milk\nThe Window Song",
+          "expectedAnswer": "Alpha Incipiens\nAzo Tle Nelli in Tlalticpac?\nAlpha Sun Hat\nThe Black Ice Cream Song\nSinaloan Milk Snake Song\nWe Have Seen the Enemy\nStandard Bitter Love Song #7\nQuetzalcoatl Eats Plums\nOrange Ball of Love\nOrange Ball of Hate\nBad Priestess\nGoing to Bristol\nYoung Caesar 2000\nGoing to Lebanon\nGrendel's Mother\nSong for Tura Satana\nAlpha in Tauris\nGoing to Georgia\nQuetzalcoatl Is Born",
+          "latencyMs": 18371.682413,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-002",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "The Blue House\nSweden\nHast Thou Considered the Tetrapod\nThe Big Grid\nThe Recognition Scene\nDuke\nCubs in Five\nThe Mess Inside\nAlphonso\nAcknowledgement\nRain in Soho\nSeptember 19th 1991\nThe House That Dripped Blood\nGoing to Georgia\nThe Anglophile\nThe Last Day of Jimi Hendrix's Life\nThe Window Song\nThe Oceanographer's Choice",
+          "expectedAnswer": "The Recognition Scene\nDowntown Seoul\nSome Swedish Trees\nI Wonder Where Our Love Has Gone\nDeianara Crush\nWhole Wide World\nFlashing Lights\nSept 19th Triple X Love! Love!\nGoing to Queens\nTahitian Ambrosia Maker\nGoing to Bolivia\nTollund Man\nCalifornia Song\nSnow Crush Killing Song\nSend Me an Angel\nNeon Orange Glimmer Song\nFM\nPrana Ferox\nCold Milk Bottle",
+          "latencyMs": 29028.386018,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-003",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Going to Georgia\nThe Mess Inside\nAlpha Desperation March\nRecognition\nPure Love\nFull Force Galesburg\nIt's All Here in Brownsville\nOrange Ball of Hate\nGoing to Queens\nSong for an Old Friend\nThe House That Dripped Blood\nAcknowledgement\nSinaloan Milk Snake Song\nDistance\nCold Milk Bottle\nSource Decay\nThe Last Day of Jimi Hendrix's Life\nLemonade",
+          "expectedAnswer": "Then the Letting Go\nHeights\nAlpha Double Negative: Going to Catalina\nHellhound on My Trail\nBlueberry Frost\nAlabama Nova\nMoon and Sand\nI Will Grab You by the Ears\nIt Froze Me\nFull Flower\nMillion\nGoing to Bogota\nOrange Ball of Pain\nGoing to Kansas\nWaving at You\nGoing to Reykjavik\nI Corinthians 13: 8-10\nGoing to Scotland",
+          "latencyMs": 27915.03334,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-004",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Galesburg\nLemonade\nGoing to Port Washington\nPoltergeists\nAlpha Desperation March\nThe House That Dripped Blood\nFull Force Galesburg\nHymn for the 255th Infantry\nGolden Boy\nOriginal Air-Blue Gown\nGuadalcanal\nEven the Woodpeckers Acknowledge Your Godhood\nThe Last Dead Confederate Soldier\nPulling My Hair\nSifting Through the Ashes of the Great Chicago Fire",
+          "expectedAnswer": "New Britain\nSnow Owl\nWest Country Dream\nMasher\nChinese House Flowers\nOntario\nDown Here\nTwin Human Highway Flares\nWeekend in Western Illinois\nUS Mill\nSong for the Julian Calendar\nMaize Stalk Drinking Blood\nEvening in Stalingrad\nMinnesota\nOriginal Air-Blue Gown\nIt's All Here in Brownsville",
+          "latencyMs": 12352.095611,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-005",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "The Coroner's Gambit\nPalmcorder Yajna\nThere Will Be No Divorce\nShadow Song\nThe Recognition Scene\nOnions\nJaipur\nFamily Happiness\nBluebelle\nAlphonso Mambo\nBaboon\nWhat Broke the Generals\nThe House That Dripped Blood\nExodus",
+          "expectedAnswer": "Jaipur\nElijah\nTrick Mirror\nIsland Garden Song\nThe Coroner's Gambit\nBaboon\nScotch Grove\nHorseradish Road\nFamily Happiness\nOnions\nBluejays and Cardinals\nShadow Song\nThere Will Be No Divorce\nInsurance Fraud #2\nThe Alphonse Mambo\nWe Were Patriots",
+          "latencyMs": 11670.162343,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-006",
+          "type": "list",
+          "correct": false,
+          "score": 0.07142857142857142,
+          "modelResponse": "The Best Ever Death Metal Band in Denton\nThe Fall of the Star High School Running Back\nDistance\nThe Mess Inside\nJenny\nFault Lines\nColor in Your Cheeks\nBalance\nPink Blue\nRich Desperate\nNight of the Mules\nSource Decay\nThe Recognition Scene\nDecentration\nMasher\nFault Lines (Reprise)",
+          "expectedAnswer": "The Best Ever Death Metal Band in Denton\nFall of the Star High School Running Back\nColor in Your Cheeks\nJenny\nFault Lines\nBalance\nPink and Blue\nRiches and Wonders\nThe Mess Inside\nJeff Davis County Blues\nDistant Stations\nBlues in Dallas\nSource Decay\nAbsolute Lithops Effect",
+          "latencyMs": 40776.93941499999,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-007",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "The Tallahassee Haunts\nSouthwood Plantation Road\nThe House That Dripped Blood\nIdylls of the King\nOld College Try\nGame Shows Touch Our Lives\nThe Mess Inside\nNo Children\nSee America Right\nOceanographer's Choice\nAlpha Rats Nest\nAlpha Desperation March",
+          "expectedAnswer": "Tallahassee\nFirst Few Desperate Hours\nSouthwood Plantation Road\nGame Shows Touch Our Lives\nThe House That Dripped Blood\nIdylls of the King\nNo Children\nSee America Right\nPeacocks\nInternational Small Arms Traffic Blues\nHave to Explode\nOld College Try\nOceanographer's Choice\nAlpha Rats Nest",
+          "latencyMs": 11317.764493,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-008",
+          "type": "list",
+          "correct": false,
+          "score": 0.15384615384615385,
+          "modelResponse": "Slow West Vultures\nPalmcorder Yajna\nThe Young Thousands\nYour Belgian Things\nHome School Valedictorian\nMole\nAll Trees Entreat Thee, Lord\nThe Fall Song\nCotton\nLetter from Belgium\nQuito\nPigs That Ran Straightaway Into The Water, Triumph Of",
+          "expectedAnswer": "Slow West Vultures\nPalmcorder Yajna\nLinda Blair Was Born Innocent\nLetter from Belgium\nThe Young Thousands\nYour Belgian Things\nMole\nHome Again Garden Grove\nAll Up the Seething Coast\nQuito\nCotton\nAgainst Pollution\nPigs That Ran Straightaway Into the Water, Triumph Of",
+          "latencyMs": 6879.360633,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-009",
+          "type": "list",
+          "correct": false,
+          "score": 0.15384615384615385,
+          "modelResponse": "You or Your Memory\nDance Music\nThis Year\nHast Thou Considered the Tetrapod\nBroom People\nLion's Teeth\nHymn for the Dead Bears\nUp the Wolves\nPale Green Things\nLove Love Love\nMagpie\nSong for Dennis Brown\nDilaudid\nThe Sunset Tree",
+          "expectedAnswer": "You Or Your Memory\nBroom People\nThis Year\nDilaudid\nDance Music\nDinu Lipatti's Bones\nUp the Wolves\nLion's Teeth\nHast Thou Considered The Tetrapod\nMagpie\nSong For Dennis Brown\nLove Love Love\nPale Green Things",
+          "latencyMs": 12618.870674,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-010",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Get Lonely\nMaybe Sprout Wings\nNew Monster Avenue\nHalf Dead\nWoke Up New\nCubs in Five\nWild Sage\nLovecraft in Brooklyn\nIf You See Light\nIn Corolla\nMoon Over Goldsboro\nWoke Up New (Acoustic)",
+          "expectedAnswer": "Wild Sage\nNew Monster Avenue\nHalf Dead\nGet Lonely\nMaybe Sprout Wings\nMoon Over Goldsboro\nIn the Hidden Places\nSong For Lonely Giants\nWoke Up New\nIf You See Light\nCobra Tattoo\nIn Corolla",
+          "latencyMs": 18825.137441,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-011",
+          "type": "list",
+          "correct": false,
+          "score": 0.07692307692307693,
+          "modelResponse": "Sax Rohmer #1\nHeretic Pride\nSan Bernardino\nAutumn Beds\nLovecraft in Brooklyn\nIn the Craters on the Moon\nTianchi Lake\nSo Desperate\nMard Tull\nSept 15th 1983\nHaight Street\nHow to Embrace a Swamp Creature\nThe Auto Song",
+          "expectedAnswer": "Sax Rohmer #1\nSan Bernardino\nHeretic Pride\nAutoclave\nNew Zion\nSo Desperate\nIn the Craters on the Moon\nLovecraft in Brooklyn\nTianchi Lake\nHow to Embrace a Swamp Creature\nMarduk T-Shirt Men's Room Incident\nSept 15 1983\nMichael Myers Resplendent",
+          "latencyMs": 9737.911811,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-012",
+          "type": "list",
+          "correct": false,
+          "score": 0.4166666666666667,
+          "modelResponse": "1 Samuel 15:23\nPsalms 40:2\nGenesis 3:23\nPhilippians 3:20-21\nDeuteronomy 2:10\nMatthew 25:21\nRomans 10:9\nEcclesiastes 6:2\nHebrews 11:40\n1 Timothy 6:10\nJob 29:22-23\n1 John 4:16",
+          "expectedAnswer": "1 Samuel 15:23\nPsalms 40:2\nGenesis 3:23\nPhilippians 3:20-21\nHebrews 11:40\nGenesis 30:3\nRomans 10:9\n1 John 4:16\nMatthew 25:21\nDeuteronomy 2:10\nIsaiah 45:23\nEzekiel 7 and the Permanent Efficacy of Grace",
+          "latencyMs": 8053.203589,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-013",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Damascus\nEstate Sale Sign\nBirth of Serpents\nProwl Great Cain\nLiza Forever Minnelli\nHigh Hawk Season\nThe Autopsy Garland\nFor Charles Bronson\nNever Quite Free\nBeautiful Gas Mask\nAge of Kings\nSuntan (A.U.)\nIn Memory of Satan\nPools That Paint Themselves",
+          "expectedAnswer": "Damn These Vampires\nBirth of Serpents\nEstate Sale Sign\nAge of Kings\nThe Autopsy Garland\nBeautiful Gas Mask\nHigh Hawk Season\nProwl Great Cain\nSourdoire Valley Song\nOuter Scorpion Squadron\nFor Charles Bronson\nNever Quite Free\nLiza Forever Minnelli",
+          "latencyMs": 17471.298831,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-014",
+          "type": "list",
+          "correct": false,
+          "score": 0.16666666666666666,
+          "modelResponse": "Amy AKA Spent Gladiator 1\nLakeside View Apartments Suite\nThe Diaz Brothers\nWhite Cedar\nCry for Judas\nTranscendental Youth\nHarlem Roulette\nSpent Gladiator 2\nIn Memory of Satan\nCounterfeit Florida Plates\nSpent Gladiator 1",
+          "expectedAnswer": "Amy aka Spent Gladiator 1\nLakeside View Apartments Suite\nCry for Judas\nHarlem Roulette\nWhite Cedar\nUntil I Am Whole\nNight Light\nThe Diaz Brothers\nCounterfeit Florida Plates\nIn Memory of Satan\nSpent Gladiator 2\nTranscendental Youth",
+          "latencyMs": 12407.079402,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-015",
+          "type": "list",
+          "correct": false,
+          "score": 0.07692307692307693,
+          "modelResponse": "The Legend of Chavo Guerrero\nThe Stewardess Is Flying the Plane!\nForeign Object\nThe Ballad of the Horned King\nChopped Down\nAnimal Mask\nMatch Made in Heaven\nThe Trash Heap\nSouthwestern Territory\nHair Match\nUnmasked\nThe Masked Wrestler",
+          "expectedAnswer": "Southwestern Territory\nThe Legend of Chavo Guerrero\nForeign Object\nAnimal Mask\nChoked Out\nHeel Turn 2\nFire Editorial\nStabbed to Death Outside San Juan\nWerewolf Gimmick\nLuna\nUnmasked!\nThe Ballad of Bull Ramos\nHair Match",
+          "latencyMs": 46405.981256,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-016",
+          "type": "list",
+          "correct": false,
+          "score": 0.3333333333333333,
+          "modelResponse": "Rain in Soho\nAndrew Eldritch Is Moving Back to Leeds\nThe Grey King and the Silver Flame Attunement\nWear Black\nPigeon\nUnliveable\nAbandoned Flesh\nStench of the Unburied\nWe Do It Different on the West Coast\nThe Legend of Chavo Guerrero\nFor the Portuguese Goth Metal Bands\nShelved",
+          "expectedAnswer": "Rain in Soho\nAndrew Eldritch Is Moving Back to Leeds\nThe Grey King and the Silver Flame Attunement\nWe Do It Different on the West Coast\nUnicorn Tolerance\nStench of the Unburied\nWear Black\nPaid in Cocaine\nRage of Travers\nShelved\nFor the Portuguese Goth Metal Bands\nAbandoned Flesh",
+          "latencyMs": 12618.604599999999,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-017",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "The River\nIn League with Dragons\nCadaver Sniffing Dog\nThe Last Place I Saw You Alive\nNeed More Bandages\nStorm Coming to Waveland\nJamaica\nBrothers\nDetachable Penis\nPoison Snake\nKilling the Dragon\nLizard Suit\nVanishing Hymn",
+          "expectedAnswer": "Done Bleeding\nYounger\nPassaic, 1975\nClemency for the Wizard King\nPossum By Night\nIn League with Dragons\nDoc Gooden\nGoing Invisible 2\nWaylon Jennings Live!\nCadaver Sniffing Dog\nAn Antidote for Strychnine\nSicilian Crest",
+          "latencyMs": 3526.3677820000003,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-018",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "[TIMEOUT]",
+          "expectedAnswer": "Aulon Raid\nUntil Olympius Returns\nLast Gasp at Calama\nFor the Snakes\nThe Wooded Hills Along the Black Sea\nJanuary 31, 438\nHopeful Assassins of Zeno\nTheir Gods Do Not Have Surgeons\nGoing to Lebanon 2\nExegetic Chains",
+          "latencyMs": 120000.271469,
+          "timedOut": true
+        },
+        {
+          "questionId": "list-019",
+          "type": "list",
+          "correct": false,
+          "score": 0.07692307692307693,
+          "modelResponse": "Corsican Mastiff\nGet Famous\nPicture of a Bird\nAs It Invades\nThe Last Problem I Couldn't Solve\nTidal Wave\nArmani Lullaby\nThe Slow Part on Death Row\nNeed More Bandages\nBefore I Got There\nGet Myself Into It\nDisappearing Angels",
+          "expectedAnswer": "Corsican Mastiff Stride\nGet Famous\nPicture of My Dress\nAs Many Candles as Possible\nTidal Wave\nPez Dorado\nThe Last Place I Saw You Alive\nBell Swamp Connection\nGreat Gold Sheep\nRat Queen\nWolf Count\nHarbor Me\nGetting Into Knives",
+          "latencyMs": 9069.860186,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-020",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Lizard Suit\nDark in Here\nThe Destruction of the Kola Superdeep Borehole Tower\nMobile\nThe Last Place I Saw You Alive\nNeed More Band\nStained Glass\nThe Slow Part\nTidal Wave\nThe Great Machine\nIt's Working Out\nThe Last Day of June",
+          "expectedAnswer": "Parisian Enclave\nThe Destruction of the Kola Superdeep Borehole Tower\nMobile\nDark in Here\nLizard Suit\nWhen a Powerful Animal Comes\nTo the Headless Horseman\nThe New Hydra Collection\nThe Slow Parts on Death Metal Albums\nBefore I Got There\nArguing With the Ghost of Peter Laughner About His Coney Island Baby Review\nLet Me Bathe in Demonic Light",
+          "latencyMs": 8647.267108,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-021",
+          "type": "list",
+          "correct": false,
+          "score": 0.08333333333333333,
+          "modelResponse": "Training Montage\nBleed Out\nFirst Blood\nNeed More Bandages\nHostages\nForeign Object\nUnder the Banner\nMental Illness\nWages of Sin\nAgain\nGift for the Empire\nSilver Lining\nAfter the Streets",
+          "expectedAnswer": "Training Montage\nMark on You\nWage Wars Get Rich Die Handsome\nExtraction Point\nBones Don't Rust\nFirst Blood\nMake You Suffer\nGuys on Every Corner\nHostages\nNeed More Bandages\nIncandescent Ruins\nBleed Out",
+          "latencyMs": 11913.398249000002,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-022",
+          "type": "list",
+          "correct": false,
+          "score": 0.08333333333333333,
+          "modelResponse": "Jenny from Thebes\nPassaic 1975\nGoing to Kansas\nFresh Tattoo\nThe Slow Parts on Death Metal Albums\nAnimal Mask\nWage Wars Get Rich Die Handsome\nKilling the Dying\nSee You in Miami\nLavender",
+          "expectedAnswer": "Clean Slate\nGround Level\nOnly One Way\nFresh Tattoo\nCleaning Crew\nMurder at the 18th St. Garage\nFrom the Nebraska Plant\nSame as Cash\nWater Tower\nJenny III\nGoing to Dallas\nGreat Pirates",
+          "latencyMs": 8262.323844999999,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-024",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Going to Port Washington\nThe Anglophile\nPure Love\nThe House That Dripped Blood\nThe Last Day of Jimi Hendrix's Life\nGoing to Georgia\nRecognition\nAlphonse\nThe Window\nThe Mess Inside\nThe Best Ever Death Metal Band in Denton\nThe Fall of the Star High School Running Back\nThe Big Coming\nThe Recognition Scene\nTwin Human Highway Flares\nCommandante\nGolden Boy\nThe Sign\nThe House That Dripped Blood",
+          "expectedAnswer": "Running Away With What Freud Said\nIce Cream, Cobra Man\nMove (Chicago 196X)\nThis Magic Moment\nDon't Take the Dogs Away\nOne Winter at Point Alpha Privative\nSolomon Revisited\nGoing to Alaska\nI'm So Lonesome I Could Cry\nEleven Bands",
+          "latencyMs": 29288.971230999996,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-025",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Going to Port Washington\nThe Hound Chronicles\nPure Love\nGolden Boy\nThe Big House\nSoul Singer\nThe Monkey Song\nAcknowledgement\nThe Last Day of Jimi Hendrix's Life\nAcknowledgement\nThe Window Song\nThe House That Dripped Blood\nAcknowledgement",
+          "expectedAnswer": "The Garden Song\nGoing to Wisconsin\nSpilling Toward Alpha\nAlpha Negative\nTorch Song\nBe Quiet\nThe Cow Song\nUntitled\nGoing to Chino\nStandard Bitter Love Song #4\nGoing to Mexico\nLab Rat Blues\nGoing to Kansas\nThe Water Song\nGoing to Spain\nKeep It on Your Mind",
+          "latencyMs": 10990.619374,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-026",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "The Grey King and the Silver Flame\nGoing to Port Washington\nThe Recognition Scene\nPure Love\nThe Last Jewish Burial in the Lone Star State\nThe Big Red X\nThe Mess Inside\nGolden Boy\nThe Best Ever Death Metal Band in Denton",
+          "expectedAnswer": "Going to Cleveland\nEarly Spring\nHistoriography\nNo, I Can't\nAlpha Desperation March\nGoing to Monaco\nStar Dusting\nTeenage World\nGoing to Santiago\nSail On",
+          "latencyMs": 13011.224676000002,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-027",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Going to Port Washington\nThe Last Day of Jimi Hendrix's Life\nThe Anglophile\nPure Love\nThe Window\nThe Big House\nThe Monkey Song\nAcknowledgement\nRecognition\nThe Return of the Horrible Carnivores\nThe House That Dripped Blood\nThe Recognition Scene\nGoing to Port Washington\nAcknowledgement",
+          "expectedAnswer": "Pure Milk\nIce Blue\nWater Song II\nSun Song\nGoing to Japan\nAre You Cleaning Off the Stone?\nThe Hot Garden Stomp\nLove Hymn to Aphrodite\nBeach House\nHello There Howard\nGoing to Norwalk\nFresh Cherries in Trinidad\nFeed This End\n15-1\nThanks For the Dress\nTell Me On A Sunday",
+          "latencyMs": 23761.873422,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-028",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Taking the Dative\nThe House That Dripped Blood\nGoing to Port Washington\nThe Recognition Scene\nThe Last Day of Jimi Hendrix's Life\nThe Anglophile\nThe Mess Inside\nThe Fall of the Star High School Running Back\nThe Big Red X\nThe Window",
+          "expectedAnswer": "Orange Ball of Peace\nStandard Bitter Love Song #8\nChino Love Song 1979\nWrong!\nGoing to Jamaica\nAlpha Gelida",
+          "latencyMs": 10653.118859999999,
+          "timedOut": false
+        },
+        {
+          "questionId": "list-029",
+          "type": "list",
+          "correct": false,
+          "score": 0,
+          "modelResponse": "Yam, the King of Crops\nGoing to Port Washington\nThe House That Dripped Blood\nSack of Marbles\nThe Last Day of Jimi Hendrix's Life\nPure Love\nAcknowledgement\nThe Window",
+          "expectedAnswer": "Seed Song\nQuetzalcoatl Comes Through\nOmega Blaster\nCoco-Yam Song\nAlagemo\nTwo Thousand Seasons\nChinese Rifle Song\nYam, King of Crops",
+          "latencyMs": 5033.900234000001,
+          "timedOut": false
+        }
+      ]
+    }
+  ],
+  "overallScore": 0.31240579595842755,
+  "totalLatencyMs": 969076.2285800001
+}

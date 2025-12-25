@@ -1,7 +1,6 @@
 import { runBenchmarkForModel, type ProgressInfo } from "./src/benchmark";
 import { MODELS, getModelById, getAllModelIds, type ModelConfig } from "./src/models";
 import { saveResult, loadResult, hasResult, loadAllResults } from "./src/storage";
-import { generateBarChart } from "./src/chart";
 import {
   printHeader,
   printSubheader,
@@ -377,6 +376,7 @@ async function main(): Promise<void> {
         }
         const filename = target || "tmg-bench-results.png";
         const outputPath = filename.endsWith(".png") ? filename : `${filename}.png`;
+        const { generateBarChart } = await import("./src/chart");
         generateBarChart(results, MODELS, outputPath);
         console.log(`${colorize("✓", "green")} Bar chart saved to ${colorize(outputPath, "cyan")}`);
       }
